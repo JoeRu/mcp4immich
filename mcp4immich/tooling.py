@@ -24,6 +24,7 @@ from .constants import MAX_DESCRIPTION_LEN, MAX_SUMMARY_LEN, WRITE_METHODS
 from .http_client import _request, _request_bytes
 from .openapi import (
     _apply_path_params,
+    _describe_parameter,
     _fetch_openapi_spec,
     _format_example,
     _format_param_summary,

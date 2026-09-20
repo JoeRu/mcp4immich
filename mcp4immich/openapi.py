@@ -189,6 +189,24 @@ def _schema_enum_values(schema: dict[str, Any] | None) -> list[Any] | None:
     return None
 
 
+def _describe_parameter(param: dict[str, Any]) -> str:
+    """One human/agent-readable line for a parameter.
+
+    Backlog #20: parameters whose schema has neither `type` nor `enum` used to
+    render as `query_type: unknown`, which forced agents to guess. They are now
+    described as free text, and enums list their values.
+    """
+    schema = param.get("schema") or {}
+    location = param.get("in", "query")
+    name = param.get("name", "")
+    enum_values = _schema_enum_values(schema if isinstance(schema, dict) else None)
+    if enum_values:
+        rendered = ", ".join(str(v) for v in enum_values)
+        return f"{location}_{name} (allowed: {rendered})"
+    declared = (schema.get("type") if isinstance(schema, dict) else None) or "string (free text)"
+    return f"{location}_{name} ({declared})"
+
+
 def _operation_param_specs(entry: dict[str, Any]) -> list[dict[str, Any]]:
     operation = entry.get("operation") or {}
     params = _merge_parameters(
@@ -213,6 +231,7 @@ def _operation_param_specs(entry: dict[str, Any]) -> list[dict[str, Any]]:
             "arg_name": _param_arg_name(location, name),
             "required": bool(param.get("required")),
             "py_type": _schema_to_python_type(schema),
+            "schema": schema,
         }
         if enum_values:
             spec_dict["enum"] = enum_values
@@ -410,18 +429,18 @@ def _format_param_summary(
         location = str(param.get("location"))
         param_name = str(param.get("name"))
         if param.get("enum"):
-            enum_values = param["enum"]
-            if len(enum_values) <= 3:
-                enum_str = "|".join(str(v) for v in enum_values)
-            else:
-                enum_str = f"{len(enum_values)} values"
-            enum_info[f"{location}:{param_name}"] = enum_str
+            # Route through the single parameter-description implementation
+            # (backlog #20) rather than re-joining enum values here.
+            described = _describe_parameter(
+                {"name": param_name, "in": location, "schema": param.get("schema")}
+            )
+            enum_info[f"{location}:{param_name}"] = described.split(" ", 1)[1]
         if not param.get("required"):
             continue
         if location in required:
             param_display = param_name
             if f"{location}:{param_name}" in enum_info:
-                param_display = f"{param_name}[{enum_info[f'{location}:{param_name}']}]"
+                param_display = f"{param_name} {enum_info[f'{location}:{param_name}']}"
             required[location].append(param_display)
     parts: list[str] = []
     for location in ("path", "query", "header", "cookie"):

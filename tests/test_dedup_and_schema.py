@@ -163,5 +163,44 @@ class TestResolveSchema(unittest.TestCase):
         assert result is None
 
 
+def test_parameter_without_type_or_enum_is_described_as_free_text():
+    from mcp4immich.tooling import _describe_parameter
+
+    described = _describe_parameter({"name": "q", "in": "query", "schema": {}})
+
+    assert "unknown" not in described
+    assert "string" in described
+
+
+def test_parameter_with_enum_lists_allowed_values():
+    from mcp4immich.tooling import _describe_parameter
+
+    described = _describe_parameter(
+        {"name": "type", "in": "query", "schema": {"type": "string", "enum": ["country", "city"]}}
+    )
+
+    assert "allowed: country, city" in described
+
+
+def test_no_spec_parameter_renders_as_unknown():
+    import json
+    from pathlib import Path
+
+    from mcp4immich.tooling import _describe_parameter
+
+    spec = json.loads(Path("mcp4immich/data/immich-openapi-3.json").read_text())
+    rendered = [
+        _describe_parameter(p)
+        for ops in spec["paths"].values()
+        for op in ops.values()
+        if isinstance(op, dict)
+        for p in op.get("parameters", [])
+        if isinstance(p, dict)
+    ]
+
+    assert rendered, "spec should expose parameters"
+    assert [r for r in rendered if "unknown" in r] == []
+
+
 if __name__ == "__main__":
     unittest.main()
