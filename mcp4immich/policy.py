@@ -125,10 +125,23 @@ class RiskPolicyMiddleware:
         # (`CallToolResult`), which requires `content`. Returning the bare
         # payload dict fails Pydantic validation (`content: Field required`),
         # so the caller sees a protocol error instead of the refusal.
+        #
+        # `resultType` is likewise required on the wire for protocol revision
+        # 2026-07-28 (`Result.resultType` — spec 2026-07-28), even though the
+        # monolith `CallToolResult` model used in the unit tests above treats
+        # it as optional and defaults it on load. Without it here, a
+        # 2026-07-28 client's `serialize_server_result` raises
+        # `ValidationError: CallToolResult.resultType Field required` and the
+        # refusal never reaches the caller — verified to affect only the
+        # 2026-07-28 era; a `legacy`-mode client already got the refusal
+        # fine. `"complete"` is correct in both eras: `serialize_server_result`
+        # drops the key entirely on 2025-11-25 and requires exactly this
+        # value's shape on 2026-07-28.
         return {
             "content": [{"type": "text", "text": json.dumps(payload)}],
             "isError": True,
             "structuredContent": payload,
+            "resultType": "complete",
         }
 
     def _describe_call(self, name: str) -> str | None:

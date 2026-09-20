@@ -83,6 +83,41 @@ async def test_serves_both_protocol_eras():
 
 
 @pytest.mark.anyio
+async def test_destructive_refusal_survives_both_protocol_eras():
+    """Spec §10 requires tools/list AND one destructive refusal to behave
+    identically across eras. This drives the real in-memory `Client` (not
+    `CallToolResult.model_validate` against a hand-built dict, which passes
+    even against the broken payload because the monolith model makes
+    `resultType` optional) against a real DESTRUCTIVE tool with no
+    `confirm=true`, in both `mode="2026-07-28"` and `mode="legacy"`.
+
+    Before the fix (`resultType` missing from the refusal envelope in
+    `policy.py`), the 2026-07-28 branch raised
+    `ExceptionGroup(... CallToolResult.resultType Field required ...)` while
+    `legacy` succeeded -- this test is RED against that code and GREEN once
+    the envelope carries `resultType: "complete"`.
+    """
+    mcp = create_mcp()
+    _register_with_mocked_openapi(mcp)
+
+    from mcp4immich.tooling import TOOL_RISK
+    from mcp4immich.risk import Risk
+
+    destructive_tools = [name for name, risk in TOOL_RISK.items() if risk is Risk.DESTRUCTIVE]
+    assert destructive_tools, "expected at least one DESTRUCTIVE tool registered"
+    tool_name = destructive_tools[0]
+
+    from mcp.client import Client
+
+    for mode in ("2026-07-28", "legacy"):
+        async with Client(mcp, mode=mode) as client:
+            result = await client.call_tool(tool_name, {})
+            assert result.is_error is True, f"mode={mode} did not refuse"
+            assert result.structured_content is not None
+            assert result.structured_content["error"] == "CONFIRMATION_REQUIRED"
+
+
+@pytest.mark.anyio
 async def test_tools_list_is_deterministically_ordered():
     """The current spec asks for stable ordering so clients can cache prompts."""
     mcp = create_mcp()
