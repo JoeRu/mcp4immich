@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp4immich"
-version = "0.1.0"
+version = "1.0.0"
 description = "MCP Server for [immich-app](https://immich.app/)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=2.2,<3",
+    "anyio>=4",
 ]
 
 [dependency-groups]
@@ -18,7 +19,6 @@ dev = [
     "pytest>=9.0.2",
     "pytest-timeout>=2.4.0",
     "pytest-cov>=6.0.0",
-    "anyio>=4",
 ]
 
 [tool.setuptools.packages.find]

@@ -17,6 +17,16 @@ from .constants import (
 from .http_client import _probe, _request
 from .specsource import resolve_spec
 
+# Set by `_fetch_openapi_spec()` after a successful resolution, so `/healthz`
+# can report where the spec came from ("cache", "network", or "vendored")
+# without triggering a resolution (or a live Immich round-trip) of its own.
+# `None` until the first successful fetch.
+_last_spec_source: str | None = None
+
+
+def _get_last_spec_source() -> str | None:
+    return _last_spec_source
+
 
 def _permission_is_read(permission: str | None) -> bool:
     if not permission:
@@ -92,6 +102,8 @@ def _fetch_openapi_spec() -> dict[str, Any]:
 
     spec, source = resolve_spec(version_tag, _fetch)
     logger.info(f"OpenAPI spec source: {source} ({len(spec.get('paths', {}))} paths)")
+    global _last_spec_source
+    _last_spec_source = source
     return spec
 
 

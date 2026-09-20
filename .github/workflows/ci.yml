@@ -30,6 +30,11 @@ jobs:
       - name: Run unit tests with coverage
         run: uv run pytest tests/ -v --cov=mcp4immich --cov-report=xml -m "not integration"
 
+      - name: Assert the dependency pin is bounded
+        run: |
+          grep -q 'mcp\[cli\]>=2.2,<3' pyproject.toml || {
+            echo "mcp dependency must keep an upper bound (see CHANGELOG 1.0.0)"; exit 1; }
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:

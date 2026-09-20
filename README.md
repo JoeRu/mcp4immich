@@ -3,11 +3,11 @@
 [![Docker](https://github.com/JoeRu/mcp4immich/actions/workflows/build-docker.yml/badge.svg)](https://github.com/JoeRu/mcp4immich/actions/workflows/build-docker.yml)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/JoeRu/mcp4immich/ci.yml?branch=main)
 
-mcp4immich is a Python MCP (Model Context Protocol) server that exposes selected Immich REST API endpoints. It uses the Immich OpenAPI spec for API metadata and surfaces a small, permission-aware tool set for common read-only checks.
+mcp4immich is a Python MCP (Model Context Protocol) server that exposes the Immich REST API as MCP tools. It generates one tool per OpenAPI operation — currently ~282 tools with a fully-permissioned key and `IMMICH_ENABLE_DESTRUCTIVE=true` — filtered down by the caller's actual Immich API permissions, and every one is risk-classified (read / write / destructive / destructive_admin) with MCP annotations attached. See **Safety** below for what that classification gates.
 
 ## Status
 - Core MCP server and capability filtering are implemented.
-- Tool exposure is gated by Immich API permissions.
+- Tool exposure is gated by Immich API permissions and by risk class (see Safety).
 - Integration tests cover tool listing and permission probes.
 
 ## Available tools
@@ -39,6 +39,60 @@ Legacy fields `path_params`, `query_params`, `headers`, and `json_body` are stil
 
 `downloadAsset` is intended for clients that cannot access the Immich API key directly. Default delivery mode is `shared_link`: the server returns a short-lived tokenized link (30 minutes) without inline payload data when supported by Immich shared-links API. For MCP JSON safety, inline payload delivery (`inline_base64`) remains base64-encoded. Optional compatibility mode `immich_link` returns a direct authenticated Immich URL.
 
+## Safety
+
+Every generated tool is classified into one of four risk levels before it is
+registered, and the classification drives both its MCP annotations
+(`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and what
+the server will actually let a client do:
+
+| Risk | Examples | What happens |
+|---|---|---|
+| `read` | `GET` endpoints | Registered and callable normally. |
+| `write` | non-destructive `POST`/`PUT`/`PATCH` | Registered and callable normally. |
+| `destructive` | `DELETE /albums/{id}`, `DELETE /assets/{id}` | Registered, but **refused unless the call carries `confirm=true`**, or the client accepts an elicitation prompt asking to confirm. |
+| `destructive_admin` | bulk/irreversible operations: `DELETE /assets`, `DELETE /people`, `POST /trash/empty`, `POST /duplicates/resolve`, every `DELETE /admin/*` | **Not registered at all** unless `IMMICH_ENABLE_DESTRUCTIVE=true` — these tools do not exist for a client to even see or call by default. |
+
+**Confirmation (`confirm`)**: a `RiskPolicyMiddleware` inspects every
+`tools/call` before it reaches the tool's handler. For a `destructive` or
+`destructive_admin` tool, it requires `confirm=true` in the call's arguments —
+if the client's MCP session supports elicitation, it instead (or additionally)
+prompts the human directly and treats an accepted elicitation as confirmation.
+**No destructive call ever reaches Immich without one of these** — a refusal
+never dispatches the underlying HTTP request. The refusal response includes
+`would_call` (the HTTP method and path that were about to run) and, for a
+by-id `DELETE`, a best-effort read-only `preview` of what would be removed.
+
+**`IMMICH_ENABLE_DESTRUCTIVE`**: gates whether `destructive_admin`-class tools
+are registered at all. Unset (or falsy), the server never advertises them —
+they cannot be discovered via `tools/list`, and calling one by name fails as
+an unknown tool, not as a refused one. Set it to `true`/`1`/`yes` only when
+that machine's operator actually wants an MCP client to be able to run
+account-wide or irreversible operations, subject still to the `confirm=true`
+gate above.
+
+Call `tool_access_report` to see, for the current API key/token and
+`IMMICH_ENABLE_DESTRUCTIVE` setting, each tool's `risk`, whether destructive
+tools are enabled, and how many `destructive_admin` tools are currently
+hidden.
+
+## Security
+
+- **Do not bind the server to `0.0.0.0` on a host with other Docker
+  containers.** Docker writes its own `iptables`/`DOCKER` DNAT rules for
+  published ports, which bypass host-level firewalls (UFW, etc.) that only see
+  the `INPUT` chain — a container publishing `0.0.0.0:8000` is reachable from
+  the network regardless of what the host firewall says. Bind to a specific
+  interface instead (a VPN address such as a Tailscale or WireGuard IP,
+  `MCP_HOST=100.x.x.x`), or publish the container port to that same specific
+  host IP in your compose/run configuration.
+- **The process holds a full Immich API key.** Whatever that key can do in
+  Immich, this server can be asked to do — `IMMICH_PROFILE` and the risk/
+  confirmation gates above reduce what an MCP *client* can trigger, but they
+  are enforced here, not by Immich. Treat the key, and network access to this
+  server, with the same care as the Immich admin credentials it was minted
+  from.
+
 ## MCP documentation surfaces
 - Server instructions are sent during initialize. Use them as the short on-ramp and point to the usage guide resource.
 - Initialize instructions now call out externalDomain discovery, workflow groups, do/don't guidance, and an example instruction string.
@@ -50,7 +104,9 @@ Environment variables:
 - `IMMICH_BASE_URL` (default `http://localhost:2283`)
 - `IMMICH_API_KEY`
 - `IMMICH_API_TOKEN`
-- `IMMICH_EXTERNAL_DOMAIN` (optional: domain for web UI links like `https://immich.example.com`; if not set, discovered from `/api/server-config`)
+- `IMMICH_EXTERNAL_DOMAIN` (optional: domain for web UI links like `https://immich.example.com`; if not set, discovered from the server-config endpoint — `/api/server-config` on Immich 2.x, `/api/server/config` on 3.x)
+- `IMMICH_ENABLE_DESTRUCTIVE` (optional: `true`/`1`/`yes` to register `destructive_admin`-class tools — bulk/irreversible operations, see Safety below; unset or false hides them entirely)
+- `MCP4IMMICH_SPEC_CACHE` (optional: directory for the cached OpenAPI spec; defaults to `$XDG_CACHE_HOME/mcp4immich` outside a container, `/app/.cache/openapi` inside the Docker image — see Docker section)
 - `IMMICH_PROFILE` (optional: `read_only`, `read_write`, or `full_scope`)
 - `IMMICH_WRITE_PROBE_PATH` (default `/api/assets`)
 - `IMMICH_WRITE_PROBE_METHOD` (default `POST`)
@@ -313,8 +369,10 @@ Environment variables are passed through from your shell or `.env` file:
 
 MCP server settings for Docker Compose:
 - `MCP_TRANSPORT` (default `sse` in compose; use `streamable-http` for HTTP)
-- `MCP_HOST` (default `0.0.0.0` in compose)
+- `MCP_HOST` (default `0.0.0.0` in compose — see **Security** above before publishing this to a host with other containers)
 - `MCP_PORT` (default `8000`; published as the host port)
+
+`GET /healthz` reports `{"status", "immich_reachable", "spec_source", "version"}` for container/monitoring probes. It always returns `200` — even when Immich is unreachable, which just sets `immich_reachable: false` — so a probe should check that field, not just the HTTP status.
 
 ### Use pre-built images from GitHub Container Registry
 

@@ -32,13 +32,32 @@ def create_mcp() -> MCPServer:
     # later without needing to be rebuilt, and without a second network probe
     # of the OpenAPI spec just to pre-compute the risk map.
     middleware = [RiskPolicyMiddleware(TOOL_RISK, TOOL_OPERATION, sibling_get=_sibling_get)]
-    return MCPServer(
+    server = MCPServer(
         "mcp4immich",
         version=__version__,
         log_level=settings["log_level"],
         instructions=instructions,
         middleware=middleware,
     )
+
+    @server.custom_route("/healthz", methods=["GET"])
+    async def healthz(request):  # noqa: ANN001 - starlette request
+        from starlette.responses import JSONResponse
+
+        from .http_client import _probe
+        from .openapi import _get_last_spec_source
+
+        reachable = bool(_probe("GET", "/api/server/ping").get("ok"))
+        return JSONResponse(
+            {
+                "status": "ok",
+                "immich_reachable": reachable,
+                "spec_source": _get_last_spec_source(),
+                "version": __version__,
+            }
+        )
+
+    return server
 
 
 def run() -> None:
