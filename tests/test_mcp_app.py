@@ -78,16 +78,15 @@ def test_resolve_external_domain_non_dict_response():
             assert domain is None
 
 
-def test_create_mcp():
-    """Test create_mcp creates FastMCP instance."""
+def test_create_mcp_returns_mcpserver_with_project_version():
+    from mcp.server.mcpserver import MCPServer
     from claw2immich.mcp_app import create_mcp
-    from mcp.server.fastmcp import FastMCP
-    
-    with patch("claw2immich.mcp_app._resolve_external_domain", return_value=None):
-        mcp = create_mcp()
-        # Check that mcp is an instance of FastMCP
-        assert isinstance(mcp, FastMCP)
-        assert mcp.name == "claw2immich"
+    from importlib.metadata import version
+
+    mcp = create_mcp()
+
+    assert isinstance(mcp, MCPServer)
+    assert mcp.version == version("claw2immich")
 
 
 def test_run_validates_transport():

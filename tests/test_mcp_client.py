@@ -12,6 +12,7 @@ from typing import Any
 
 import main
 import mcp
+import mcp_types
 from mcp.client import sse as mcp_sse
 
 
@@ -42,9 +43,9 @@ def _build_server_env(env_path: str) -> dict[str, str]:
     return env_vars
 
 
-def _extract_tool_payload(result: mcp.types.CallToolResult) -> object:
-    if result.structuredContent is not None:
-        return result.structuredContent
+def _extract_tool_payload(result: mcp_types.CallToolResult) -> object:
+    if result.structured_content is not None:
+        return result.structured_content
     if not result.content:
         return None
     first = result.content[0]

@@ -1,14 +1,16 @@
 import logging
+from importlib.metadata import version
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from .config import get_mcp_settings, get_transport_settings, get_external_domain
 from .constants import build_server_instructions
-from .http_client import _request
 from .prompts import register_prompts_and_resources
 from .tooling import _register_tools
 
 logger = logging.getLogger(__name__)
+
+__version__ = version("claw2immich")
 
 
 def _resolve_external_domain() -> str | None:
@@ -16,14 +18,13 @@ def _resolve_external_domain() -> str | None:
     return get_external_domain()
 
 
-def create_mcp() -> FastMCP:
+def create_mcp() -> MCPServer:
     logger.info("Creating MCP server")
     settings = get_mcp_settings()
     instructions = build_server_instructions(_resolve_external_domain())
-    return FastMCP(
+    return MCPServer(
         "claw2immich",
-        host=settings["host"],
-        port=settings["port"],
+        version=__version__,
         log_level=settings["log_level"],
         instructions=instructions,
     )
@@ -39,4 +40,15 @@ def run() -> None:
     logger.info(f"Using transport: {transport}")
     if transport not in {"stdio", "sse", "streamable-http"}:
         raise ValueError("MCP_TRANSPORT must be stdio, sse, or streamable-http")
-    mcp.run(transport=transport, mount_path=mount_path)
+
+    if transport == "stdio":
+        # stdio has no network binding; host/port/mount_path do not apply.
+        mcp.run(transport=transport)
+        return
+
+    settings = get_mcp_settings()
+    run_kwargs: dict[str, object] = {"host": settings["host"], "port": settings["port"]}
+    if mount_path:
+        path_kwarg = "sse_path" if transport == "sse" else "streamable_http_path"
+        run_kwargs[path_kwarg] = mount_path
+    mcp.run(transport=transport, **run_kwargs)
