@@ -376,8 +376,9 @@ Environment variables are passed through from your shell or `.env` file:
 
 MCP server settings for Docker Compose:
 - `MCP_TRANSPORT` (default `sse` in compose; use `streamable-http` for HTTP)
-- `MCP_HOST` (default `0.0.0.0` in compose — see **Security** above before publishing this to a host with other containers)
+- `MCP_HOST` (default `0.0.0.0` in compose — this is the address the process binds *inside* the container's own network namespace, not the host mapping; see `MCP_BIND_IP` for the host side)
 - `MCP_PORT` (default `8000`; published as the host port)
+- `MCP_BIND_IP` (default `127.0.0.1` — the **host** interface the published port is bound to, e.g. `docker-compose.yaml`'s `ports:` maps `${MCP_BIND_IP:-127.0.0.1}:${MCP_PORT}:${MCP_PORT}`. Set it to a specific interface, such as a Tailscale or WireGuard address, to expose the server deliberately; see **Security** above before ever setting it to `0.0.0.0`.)
 
 `GET /healthz` reports `{"status", "immich_reachable", "spec_source", "version"}` for container/monitoring probes. It always returns `200` — even when Immich is unreachable, which just sets `immich_reachable: false` — so a probe should check that field, not just the HTTP status.
 
@@ -395,15 +396,25 @@ docker pull ghcr.io/joeru/mcp4immich:latest
 # Latest build from develop branch
 docker pull ghcr.io/joeru/mcp4immich:develop
 
-# Specific version (e.g., 0.1.0)
-docker pull ghcr.io/joeru/mcp4immich:0.1.0
+# Specific version (e.g., 1.0.0)
+docker pull ghcr.io/joeru/mcp4immich:1.0.0
 ```
 
 **Run the image:**
+
+The examples below publish to `127.0.0.1` only. The process holds a full
+Immich API key, and Docker writes its own `iptables` DNAT rules for a
+published port — these bypass host firewalls (UFW, etc.) that only see the
+`INPUT` chain, so `-p 8000:8000` (i.e. `0.0.0.0:8000`) is reachable from the
+network regardless of what the host firewall says. To expose it
+deliberately, publish to a specific interface instead, e.g.
+`-p 100.x.x.x:8000:8000` for a Tailscale address, or `-p 0.0.0.0:8000:8000`
+only when you have verified the host firewall genuinely blocks that port.
+
 ```bash
 docker run -e IMMICH_BASE_URL=https://immich.example.com \
            -e IMMICH_API_KEY=your-api-key \
-           -p 8000:8000 \
+           -p 127.0.0.1:8000:8000 \
            ghcr.io/joeru/mcp4immich:latest
 ```
 
@@ -413,7 +424,7 @@ docker run -e IMMICH_BASE_URL=https://immich.example.com \
            -e IMMICH_API_KEY=your-api-key \
            -e MCP_TRANSPORT=sse \
            -e MCP_HOST=0.0.0.0 \
-           -p 8000:8000 \
+           -p 127.0.0.1:8000:8000 \
            ghcr.io/joeru/mcp4immich:latest
 ```
 
@@ -422,7 +433,7 @@ docker run -e IMMICH_BASE_URL=https://immich.example.com \
 docker run -e IMMICH_BASE_URL=https://immich.example.com \
            -e IMMICH_API_KEY=your-readonly-api-key \
            -e IMMICH_PROFILE=read_only \
-           -p 8000:8000 \
+           -p 127.0.0.1:8000:8000 \
            ghcr.io/joeru/mcp4immich:latest
 ```
 

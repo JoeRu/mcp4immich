@@ -24,4 +24,12 @@ services:
       MCP_MOUNT_PATH: ${MCP_MOUNT_PATH:-}
       MCP_LOG_LEVEL: ${MCP_LOG_LEVEL:-INFO}
     ports:
-      - "${MCP_PORT:-8000}:${MCP_PORT:-8000}"
+      # I6: publish to loopback by default, not every interface. Docker
+      # writes its own iptables DNAT rules for a published port, bypassing
+      # host firewalls (UFW etc.) that only see the INPUT chain -- publishing
+      # 0.0.0.0 here exposes a process holding a full Immich API key to
+      # anything that can reach this host's IP. Set MCP_BIND_IP to a specific
+      # interface (a VPN address, e.g.) to expose it deliberately; MCP_HOST
+      # above is unrelated -- it is the address the process binds *inside*
+      # the container's own network namespace, not the host mapping.
+      - "${MCP_BIND_IP:-127.0.0.1}:${MCP_PORT:-8000}:${MCP_PORT:-8000}"
