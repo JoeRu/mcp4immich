@@ -202,5 +202,141 @@ def test_no_spec_parameter_renders_as_unknown():
     assert [r for r in rendered if "unknown" in r] == []
 
 
+def _load_vendored_spec():
+    import json
+    from pathlib import Path
+
+    return json.loads(Path("mcp4immich/data/immich-openapi-3.json").read_text())
+
+
+def _find_operation_params(spec, operation_id):
+    for ops in spec["paths"].values():
+        for op in ops.values():
+            if isinstance(op, dict) and op.get("operationId") == operation_id:
+                return op.get("parameters", [])
+    raise AssertionError(f"operationId {operation_id!r} not found in vendored spec")
+
+
+def test_ref_parameter_resolves_to_its_component_enum_getpartners():
+    from mcp4immich.tooling import _describe_parameter
+
+    spec = _load_vendored_spec()
+    params = _find_operation_params(spec, "getPartners")
+    direction = next(p for p in params if p.get("name") == "direction")
+
+    described = _describe_parameter(direction, spec)
+
+    assert "allowed: shared-by, shared-with" in described
+
+
+def test_ref_parameter_resolves_to_its_component_enum_getsearchsuggestions():
+    from mcp4immich.tooling import _describe_parameter
+
+    spec = _load_vendored_spec()
+    params = _find_operation_params(spec, "getSearchSuggestions")
+    type_param = next(p for p in params if p.get("name") == "type")
+
+    described = _describe_parameter(type_param, spec)
+
+    for value in (
+        "country",
+        "state",
+        "city",
+        "camera-make",
+        "camera-model",
+        "camera-lens-model",
+    ):
+        assert value in described
+    assert "allowed:" in described
+
+
+def test_ref_parameter_with_no_enum_falls_back_to_type():
+    from mcp4immich.tooling import _describe_parameter
+
+    spec = {
+        "components": {
+            "schemas": {
+                "PlainThing": {"type": "integer"},
+            }
+        }
+    }
+    described = _describe_parameter(
+        {"name": "count", "in": "query", "schema": {"$ref": "#/components/schemas/PlainThing"}},
+        spec,
+    )
+
+    assert "unknown" not in described
+    assert "integer" in described
+
+
+def test_ref_parameter_with_missing_target_degrades_to_free_text():
+    from mcp4immich.tooling import _describe_parameter
+
+    spec = {"components": {"schemas": {}}}
+    described = _describe_parameter(
+        {"name": "ghost", "in": "query", "schema": {"$ref": "#/components/schemas/NoSuchThing"}},
+        spec,
+    )
+
+    assert "unknown" not in described
+    assert "string (free text)" in described
+
+
+def test_ref_parameter_to_a_ref_is_left_unresolved_not_looped():
+    from mcp4immich.tooling import _describe_parameter
+
+    spec = {
+        "components": {
+            "schemas": {
+                "Alias": {"$ref": "#/components/schemas/Real"},
+                "Real": {"type": "string", "enum": ["a", "b"]},
+            }
+        }
+    }
+    described = _describe_parameter(
+        {"name": "x", "in": "query", "schema": {"$ref": "#/components/schemas/Alias"}},
+        spec,
+    )
+
+    # One level only: Alias resolves to another $ref, which is treated as
+    # unresolved rather than chased further, so this must NOT see "Real"'s enum.
+    assert "unknown" not in described
+    assert "allowed:" not in described
+    assert "string (free text)" in described
+
+
+def test_all_single_level_ref_enums_in_spec_render_as_allowed():
+    from mcp4immich.tooling import _describe_parameter
+
+    spec = _load_vendored_spec()
+    schemas = spec["components"]["schemas"]
+    checked = 0
+    for ops in spec["paths"].values():
+        for op in ops.values():
+            if not isinstance(op, dict):
+                continue
+            for p in op.get("parameters", []):
+                if not isinstance(p, dict):
+                    continue
+                schema = p.get("schema")
+                if not isinstance(schema, dict):
+                    continue
+                ref = schema.get("$ref", "")
+                if not isinstance(ref, str) or not ref.startswith(
+                    "#/components/schemas/"
+                ):
+                    continue
+                target = schemas.get(ref.rsplit("/", 1)[-1])
+                if not isinstance(target, dict) or "$ref" in target:
+                    continue
+                if not target.get("enum"):
+                    continue
+                checked += 1
+                described = _describe_parameter(p, spec)
+                assert "allowed:" in described, (p.get("name"), described)
+
+    assert checked > 0, "expected at least one single-level $ref enum in the vendored spec"
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -189,16 +189,35 @@ def _schema_enum_values(schema: dict[str, Any] | None) -> list[Any] | None:
     return None
 
 
-def _describe_parameter(param: dict[str, Any]) -> str:
+def _describe_parameter(param: dict[str, Any], spec: dict[str, Any] | None = None) -> str:
     """One human/agent-readable line for a parameter.
 
     Backlog #20: parameters whose schema has neither `type` nor `enum` used to
     render as `query_type: unknown`, which forced agents to guess. They are now
     described as free text, and enums list their values.
+
+    Fix round 1: some parameters (e.g. getPartners' `direction`, getSearchSuggestions'
+    `type`) declare their schema as a `$ref` to a component schema that carries the
+    real enum, rather than inlining it. When `spec` is given, a single-level `$ref`
+    is resolved against `spec["components"]["schemas"]` before deciding what to
+    render. A `$ref` to another `$ref` is deliberately left unresolved (one level
+    only), and a missing or malformed target degrades to the existing free-text
+    output rather than raising. Passing no `spec` (or a schema with no `$ref`)
+    reproduces the exact prior behaviour/output.
     """
     schema = param.get("schema") or {}
     location = param.get("in", "query")
     name = param.get("name", "")
+    if spec is not None and isinstance(schema, dict):
+        ref_name = _schema_ref_name(schema)
+        if ref_name:
+            components = spec.get("components") if isinstance(spec, dict) else None
+            schemas = (
+                components.get("schemas") if isinstance(components, dict) else None
+            )
+            resolved = schemas.get(ref_name) if isinstance(schemas, dict) else None
+            if isinstance(resolved, dict) and "$ref" not in resolved:
+                schema = resolved
     enum_values = _schema_enum_values(schema if isinstance(schema, dict) else None)
     if enum_values:
         rendered = ", ".join(str(v) for v in enum_values)
@@ -428,12 +447,17 @@ def _format_param_summary(
     for param in param_specs:
         location = str(param.get("location"))
         param_name = str(param.get("name"))
-        if param.get("enum"):
-            # Route through the single parameter-description implementation
-            # (backlog #20) rather than re-joining enum values here.
-            described = _describe_parameter(
-                {"name": param_name, "in": location, "schema": param.get("schema")}
-            )
+        # Route through the single parameter-description implementation
+        # (backlog #20) rather than re-joining enum values here. Passing
+        # `spec` lets a single-level `$ref` (e.g. getPartners' `direction`,
+        # getSearchSuggestions' `type`) resolve to its real enum instead of
+        # silently disclosing nothing, which is why this isn't gated on the
+        # pre-extracted `param["enum"]` (never set for `$ref` schemas).
+        described = _describe_parameter(
+            {"name": param_name, "in": location, "schema": param.get("schema")},
+            spec,
+        )
+        if "(allowed:" in described:
             enum_info[f"{location}:{param_name}"] = described.split(" ", 1)[1]
         if not param.get("required"):
             continue
