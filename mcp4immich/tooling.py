@@ -682,7 +682,15 @@ def tool_access_report() -> dict[str, Any]:
                 {"tool": tool_name, "reason": str(info.get("reason"))}
             )
     openapi_access = _openapi_tool_access()
-    allowed_tools.extend(openapi_access["allowed_tools"])
+    hidden_admin = set(HIDDEN_ADMIN_TOOLS)
+    # `_openapi_tool_access()` doesn't know about the destructive-admin gate —
+    # that's applied later, during registration. Without subtracting it here,
+    # a name would appear in both `allowed_tools` and
+    # `hidden_destructive_admin`, and an agent reading only the former would
+    # try to call a tool that was never registered.
+    allowed_tools.extend(
+        name for name in openapi_access["allowed_tools"] if name not in hidden_admin
+    )
     blocked_tools.extend(openapi_access["blocked_tools"])
     logger.info(
         f"Tool access report: {len(allowed_tools)} allowed, {len(blocked_tools)} blocked"
@@ -896,12 +904,15 @@ def _register_tools(mcp) -> None:
         write_capability_report,
     ):
         mcp.add_tool(tool_func, annotations=read_only)
+        TOOL_RISK[tool_func.__name__] = Risk.READ
 
     if has_auth:
         mcp.add_tool(download_asset, name="downloadAsset", annotations=read_only)
+        TOOL_RISK["downloadAsset"] = Risk.READ
 
     if capabilities.get("get_current_user", {}).get("allowed"):
         mcp.add_tool(get_current_user, annotations=read_only)
+        TOOL_RISK[get_current_user.__name__] = Risk.READ
 
     _register_openapi_tools(mcp)
 

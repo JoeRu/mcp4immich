@@ -11,8 +11,12 @@ best-effort only: it may issue a single GET to show what would be deleted,
 never a mutation, and a failed preview must never block the refusal itself.
 """
 
+import json
 import logging
+from collections.abc import Mapping
 from typing import Any
+
+import anyio
 
 from .risk import Risk
 
@@ -33,43 +37,68 @@ class RiskPolicyMiddleware:
         sibling_get: Any = None,
     ):
         self._risk_by_tool = risk_by_tool
-        self._operation_by_tool = operation_by_tool or {}
+        # NOTE: `operation_by_tool or {}` would silently bind a *new* dict
+        # whenever the caller's map is still empty (an empty dict is falsy) —
+        # exactly the state TOOL_OPERATION is in when `create_mcp()`
+        # constructs this middleware, before registration has run. That
+        # severs the shared reference: every entry `_register_openapi_tools`
+        # adds afterwards would be invisible here, and `would_call`/`preview`
+        # would be permanently null. `is None` is the only correct check.
+        self._operation_by_tool = {} if operation_by_tool is None else operation_by_tool
         self._sibling_get = sibling_get
 
     async def __call__(self, ctx: Any, call_next: Any) -> Any:
         if getattr(ctx, "method", None) != "tools/call":
             return await call_next(ctx)
 
-        params = getattr(ctx, "params", None) or {}
-        name = params.get("name") if isinstance(params, dict) else None
+        params = getattr(ctx, "params", None)
+        # `ctx.params` is typed `Mapping[str, Any] | None` — not `dict`. A
+        # `dict`-only isinstance check would treat any other Mapping shape as
+        # "no name", falling through to `call_next` UNGATED. Mapping keeps the
+        # fail-closed behaviour for any conforming shape.
+        name = params.get("name") if isinstance(params, Mapping) else None
         risk = self._risk_by_tool.get(name)
         if risk not in GATED:
             return await call_next(ctx)
 
-        arguments = (params.get("arguments") if isinstance(params, dict) else None) or {}
+        raw_arguments = params.get("arguments") if isinstance(params, Mapping) else None
+        arguments = raw_arguments if isinstance(raw_arguments, Mapping) else {}
         if arguments.get("confirm") is True:
             return await call_next(ctx)
 
         logger.info(f"Refused unconfirmed destructive call to {name}")
-        return {
+        payload = {
             "ok": False,
             "error": CONFIRMATION_REQUIRED,
             "risk": str(risk),
             "tool": name,
             "would_call": self._describe_call(name),
-            "preview": self._preview(name, arguments),
+            "preview": await self._preview(name, arguments),
             "hint": "This call can destroy data. Re-send with confirm=true to proceed.",
+        }
+        # A middleware short-circuit is passed through as the final result
+        # verbatim — it must itself be a valid `tools/call` result
+        # (`CallToolResult`), which requires `content`. Returning the bare
+        # payload dict fails Pydantic validation (`content: Field required`),
+        # so the caller sees a protocol error instead of the refusal.
+        return {
+            "content": [{"type": "text", "text": json.dumps(payload)}],
+            "isError": True,
+            "structuredContent": payload,
         }
 
     def _describe_call(self, name: str) -> str | None:
         operation = self._operation_by_tool.get(name)
         return f"{operation[0]} {operation[1]}" if operation else None
 
-    def _preview(self, name: str, arguments: dict[str, Any]) -> dict[str, Any] | None:
+    async def _preview(self, name: str, arguments: Mapping[str, Any]) -> dict[str, Any] | None:
         """Best effort: for a by-id delete with a sibling GET, show what would go.
 
         Never mutating, never fatal: any failure yields None so the refusal
-        itself is never blocked by a failed preview.
+        itself is never blocked by a failed preview. Run off the event loop
+        thread — `sibling_get` does a synchronous, blocking HTTP GET, and
+        awaiting it inline would stall the server's read loop on every
+        refusal.
         """
         operation = self._operation_by_tool.get(name)
         if not operation or not self._sibling_get:
@@ -78,7 +107,7 @@ class RiskPolicyMiddleware:
         if method != "DELETE" or "{" not in path:
             return None
         try:
-            return self._sibling_get(path, arguments)
+            return await anyio.to_thread.run_sync(self._sibling_get, path, arguments)
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(f"Preview for {name} failed: {exc}")
             return None
