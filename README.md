@@ -39,12 +39,18 @@ Legacy fields `path_params`, `query_params`, `headers`, and `json_body` are stil
 
 `downloadAsset` is intended for clients that cannot access the Immich API key directly. Default delivery mode is `shared_link`: the server returns a short-lived tokenized link (30 minutes) without inline payload data when supported by Immich shared-links API. For MCP JSON safety, inline payload delivery (`inline_base64`) remains base64-encoded. Optional compatibility mode `immich_link` returns a direct authenticated Immich URL.
 
+**`shared_link` and `immich_link` both create a shared link first** — a write, even though the tool otherwise looks like a plain download. Only `inline_base64` is a pure `GET` with no side effect. `downloadAsset` is therefore risk-classified `write` (not `read`) unless `IMMICH_DOWNLOAD_ASSET_DELIVERY=inline_base64`, and under `IMMICH_PROFILE=read_only` the link-creating modes are refused outright, before any HTTP call — see Safety below.
+
 ## Safety
 
 Every generated tool is classified into one of four risk levels before it is
 registered, and the classification drives both its MCP annotations
 (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) and what
-the server will actually let a client do:
+the server will actually let a client do. The one hand-written exception is
+`downloadAsset`: it is classified `write` (not `read`) unless
+`IMMICH_DOWNLOAD_ASSET_DELIVERY=inline_base64`, because its default and
+`immich_link` modes both create a shared link — a write — before returning
+anything; `IMMICH_PROFILE=read_only` refuses those modes outright.
 
 | Risk | Examples | What happens |
 |---|---|---|
@@ -147,6 +153,7 @@ Access profiles provide predefined permission levels to simplify API key managem
 - Album creation, modification
 - User management
 - Server configuration
+- `downloadAsset` in its `shared_link` (default) or `immich_link` mode — both create a shared link, a write; use `IMMICH_DOWNLOAD_ASSET_DELIVERY=inline_base64` for a read-only download under this profile
 
 **Example Claude Desktop config (`mcporter.json` snippet):**
 ```json

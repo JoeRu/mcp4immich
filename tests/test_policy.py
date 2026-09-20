@@ -399,7 +399,13 @@ def test_report_does_not_list_hidden_admin_tools_as_allowed(monkeypatch):
 
 def test_hand_written_tools_are_recorded_as_read_risk(monkeypatch):
     """The six hand-written tools must appear in TOOL_RISK too, so
-    tool_access_report's `risk` map doesn't silently omit them."""
+    tool_access_report's `risk` map doesn't silently omit them.
+
+    `downloadAsset` is deliberately excluded from the blanket READ check
+    here (see I4 / test_download_asset.py): its default delivery mode
+    (shared_link) creates a shared link, which is a write, so it must
+    classify as WRITE unless IMMICH_DOWNLOAD_ASSET_DELIVERY=inline_base64.
+    """
     from mcp.server.mcpserver import MCPServer
 
     mcp = MCPServer("test", version="0.0.0")
@@ -410,10 +416,11 @@ def test_hand_written_tools_are_recorded_as_read_risk(monkeypatch):
         "get_server_version",
         "tool_access_report",
         "write_capability_report",
-        "downloadAsset",
         "get_current_user",
     ):
         assert tooling_mod.TOOL_RISK.get(name) is Risk.READ, name
+
+    assert tooling_mod.TOOL_RISK.get("downloadAsset") is Risk.WRITE
 
 
 class _ReadOnlyMapping(Mapping):

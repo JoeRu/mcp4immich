@@ -726,6 +726,27 @@ def download_asset(asset_id: str, output: str = "base64") -> dict[str, Any]:
 
         delivery_mode = get_download_asset_delivery_mode()
 
+        # I4: `immich_link` and `shared_link` both attempt to POST a new
+        # shared link (a write) before anything else -- `immich_link` only
+        # falls back to a plain authenticated GET link if that write fails.
+        # Only `inline_base64` never writes. `IMMICH_PROFILE=read_only` must
+        # therefore refuse the link-creating modes outright, before any HTTP
+        # call is attempted -- the write probe / risk gate elsewhere in this
+        # module never sees this tool because it is hand-written, not
+        # generated from the OpenAPI spec.
+        if delivery_mode != "inline_base64" and not profile_allows_write(get_profile()):
+            return {
+                "asset_id": asset_id,
+                "delivery_mode": delivery_mode,
+                "error": (
+                    f"downloadAsset in '{delivery_mode}' mode creates a shared link "
+                    "(a write operation), which the current IMMICH_PROFILE does not "
+                    "allow. Set IMMICH_DOWNLOAD_ASSET_DELIVERY=inline_base64 for a "
+                    "read-only download, or use a profile that allows writes "
+                    "(read_write or full_scope)."
+                ),
+            }
+
         def _resolve_shared_link_url(
             payload: dict[str, Any],
             external_domain: str,
@@ -909,8 +930,23 @@ def _register_tools(mcp) -> None:
         TOOL_RISK[tool_func.__name__] = Risk.READ
 
     if has_auth:
-        mcp.add_tool(download_asset, name="downloadAsset", annotations=read_only)
-        TOOL_RISK["downloadAsset"] = Risk.READ
+        # I4: only inline_base64 is a pure read (one GET). immich_link and
+        # shared_link both attempt to create a shared link first -- a write
+        # -- so the tool's advertised annotations and TOOL_RISK entry must
+        # say WRITE for those modes, not READ, regardless of what the write
+        # probe found for OpenAPI-generated tools (this one is hand-written
+        # and bypasses that probe entirely).
+        download_risk = (
+            Risk.READ
+            if get_download_asset_delivery_mode() == "inline_base64"
+            else Risk.WRITE
+        )
+        mcp.add_tool(
+            download_asset,
+            name="downloadAsset",
+            annotations=annotations_for(download_risk, "GET"),
+        )
+        TOOL_RISK["downloadAsset"] = download_risk
 
     if capabilities.get("get_current_user", {}).get("allowed"):
         mcp.add_tool(get_current_user, annotations=read_only)
