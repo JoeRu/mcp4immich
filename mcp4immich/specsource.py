@@ -15,7 +15,21 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 VENDORED_DIR = Path(__file__).parent / "data"
-DEFAULT_CACHE_DIR = Path(os.getenv("MCP4IMMICH_SPEC_CACHE", "/app/.cache/openapi"))
+
+
+def _default_cache_dir() -> Path:
+    """Where to cache the spec when the caller doesn't specify one.
+
+    `MCP4IMMICH_SPEC_CACHE` (set by the Dockerfile to `/app/.cache/openapi`
+    inside the image) wins when present. Outside a container there is no
+    `/app`, so the fallback is a per-user cache directory rather than an
+    absolute system path nothing may be able to write to. Evaluated at call
+    time (not import time) so env changes and per-test overrides take effect.
+    """
+    override = os.getenv("MCP4IMMICH_SPEC_CACHE")
+    if override:
+        return Path(override)
+    return Path(os.getenv("XDG_CACHE_HOME", Path.home() / ".cache")) / "mcp4immich"
 
 
 def _cache_file(cache_dir: Path, version_tag: str) -> Path:
@@ -33,7 +47,7 @@ def resolve_spec(
     cache_dir: Path | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Return (spec, source) with source in {"cache", "network", "vendored"}."""
-    cache_dir = cache_dir or DEFAULT_CACHE_DIR
+    cache_dir = cache_dir or _default_cache_dir()
     cached = _cache_file(cache_dir, version_tag)
 
     if cached.is_file():

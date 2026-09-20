@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -5,6 +7,19 @@ from mcp4immich import openapi
 
 
 class OpenApiVersionedSpecTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # resolve_spec's default cache dir must never be a shared location:
+        # a previous run's cached spec would make the mocked-network
+        # assertions below meaningless (they'd hit the cache instead of the
+        # mock). Point it at a fresh per-test temp dir every time.
+        self._tmp_cache_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp_cache_dir.cleanup)
+        self._env_patcher = patch.dict(
+            os.environ, {"MCP4IMMICH_SPEC_CACHE": self._tmp_cache_dir.name}
+        )
+        self._env_patcher.start()
+        self.addCleanup(self._env_patcher.stop)
+
     def test_version_tag_from_payload(self) -> None:
         payload = {"major": 2, "minor": 5, "patch": 6}
         self.assertEqual(openapi._version_tag_from_payload(payload), "v2.5.6")
