@@ -5,6 +5,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from mcp_types import ToolAnnotations
+
 logger = logging.getLogger(__name__)
 
 from .capabilities import (
@@ -42,6 +44,30 @@ from .openapi import (
     _tool_name_for_operation,
     _truncate_description,
 )
+from .risk import Risk, classify
+
+
+def annotations_for(risk: Risk, method: str) -> ToolAnnotations:
+    """MCP hints for a tool. Advisory only — clients may ignore or strip them,
+    which is why the confirm gate, not these hints, is the enforcement point."""
+    method = method.upper()
+    destructive = risk in (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN)
+    if risk is Risk.READ:
+        idempotent = True
+    elif destructive:
+        idempotent = method == "DELETE" and not _is_collection_delete(method, risk)
+    else:
+        idempotent = method == "PUT"
+    return ToolAnnotations(
+        read_only_hint=risk is Risk.READ,
+        destructive_hint=destructive,
+        idempotent_hint=idempotent,
+        open_world_hint=False,
+    )
+
+
+def _is_collection_delete(method: str, risk: Risk) -> bool:
+    return method == "DELETE" and risk is Risk.DESTRUCTIVE_ADMIN
 
 
 def _should_decorate_response(method: str, path: str) -> tuple[bool, str | None]:
@@ -773,6 +799,7 @@ def _register_tools(mcp) -> None:
     capabilities = _discover_capabilities()
     config = _get_config()
     has_auth = bool(config["api_key"] or config["api_token"])
+    read_only = annotations_for(Risk.READ, "GET")
     for tool_func in (
         # openapi_summary,
         # list_openapi_paths,
@@ -781,13 +808,13 @@ def _register_tools(mcp) -> None:
         tool_access_report,
         write_capability_report,
     ):
-        mcp.tool()(tool_func)
+        mcp.add_tool(tool_func, annotations=read_only)
 
     if has_auth:
-        mcp.tool(name="downloadAsset")(download_asset)
+        mcp.add_tool(download_asset, name="downloadAsset", annotations=read_only)
 
     if capabilities.get("get_current_user", {}).get("allowed"):
-        mcp.tool()(get_current_user)
+        mcp.add_tool(get_current_user, annotations=read_only)
 
     _register_openapi_tools(mcp)
 
@@ -1021,4 +1048,10 @@ def _register_openapi_tools(mcp) -> None:
             return tool
 
         tool_func = _make_tool(method, path, requires_auth, param_specs, body_spec, external_domain)
-        mcp.tool(name=tool_name, description=description)(tool_func)
+        risk = classify(method, path)
+        mcp.add_tool(
+            tool_func,
+            name=tool_name,
+            description=description,
+            annotations=annotations_for(risk, method),
+        )
