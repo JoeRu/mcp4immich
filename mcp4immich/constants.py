@@ -18,7 +18,7 @@ def build_server_instructions(external_domain: str | None) -> str:
             "or call GET /api/server-config and read externalDomain. "
         )
     return (
-        "claw2immich MCP server for Immich. "
+        "mcp4immich MCP server for Immich. "
         "Use tool descriptions (method/path) to choose OpenAPI tools. "
         f"{domain_note}"
         "URL patterns: <externalDomain>/photos/<asset-id>, "

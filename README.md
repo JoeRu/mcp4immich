@@ -1,9 +1,9 @@
-# claw2immich
+# mcp4immich
 
-[![Docker](https://github.com/JoeRu/claw2immich/actions/workflows/build-docker.yml/badge.svg)](https://github.com/JoeRu/claw2immich/actions/workflows/build-docker.yml)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/JoeRu/claw2immich/ci.yml?branch=main)
+[![Docker](https://github.com/JoeRu/mcp4immich/actions/workflows/build-docker.yml/badge.svg)](https://github.com/JoeRu/mcp4immich/actions/workflows/build-docker.yml)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/JoeRu/mcp4immich/ci.yml?branch=main)
 
-claw2immich is a Python MCP (Model Context Protocol) server that exposes selected Immich REST API endpoints. It uses the Immich OpenAPI spec for API metadata and surfaces a small, permission-aware tool set for common read-only checks.
+mcp4immich is a Python MCP (Model Context Protocol) server that exposes selected Immich REST API endpoints. It uses the Immich OpenAPI spec for API metadata and surfaces a small, permission-aware tool set for common read-only checks.
 
 ## Status
 - Core MCP server and capability filtering are implemented.
@@ -96,9 +96,9 @@ Access profiles provide predefined permission levels to simplify API key managem
 ```json
 {
   "mcpServers": {
-    "claw2immich-readonly": {
+    "mcp4immich-readonly": {
       "command": "python",
-      "args": ["c:\\path\\to\\claw2immich\\main.py"],
+      "args": ["c:\\path\\to\\mcp4immich\\main.py"],
       "env": {
         "IMMICH_BASE_URL": "https://immich.example.com",
         "IMMICH_API_KEY": "your-read-only-key",
@@ -138,9 +138,9 @@ Access profiles provide predefined permission levels to simplify API key managem
 ```json
 {
   "mcpServers": {
-    "claw2immich-readwrite": {
+    "mcp4immich-readwrite": {
       "command": "python",
-      "args": ["c:\\path\\to\\claw2immich\\main.py"],
+      "args": ["c:\\path\\to\\mcp4immich\\main.py"],
       "env": {
         "IMMICH_BASE_URL": "https://immich.example.com",
         "IMMICH_API_KEY": "your-readwrite-key",
@@ -172,9 +172,9 @@ Access profiles provide predefined permission levels to simplify API key managem
 ```json
 {
   "mcpServers": {
-    "claw2immich-admin": {
+    "mcp4immich-admin": {
       "command": "python",
-      "args": ["c:\\path\\to\\claw2immich\\main.py"],
+      "args": ["c:\\path\\to\\mcp4immich\\main.py"],
       "env": {
         "IMMICH_BASE_URL": "https://immich.example.com",
         "IMMICH_API_KEY": "your-admin-key",
@@ -300,7 +300,7 @@ docker compose build
 docker compose up
 ```
 
-Note: the container runs `main.py`, which imports the `claw2immich` package.
+Note: the container runs `main.py`, which imports the `mcp4immich` package.
 If you change the package layout, rebuild the image so the updated package is
 copied into the container.
 
@@ -320,16 +320,18 @@ MCP server settings for Docker Compose:
 
 Pre-built Docker images are automatically published to GitHub Container Registry (GHCR) for every push to `main` and `develop` branches, as well as for releases.
 
+> Images published before 2026-09-20 live at `ghcr.io/joeru/claw2immich` and keep working; new tags are published under `mcp4immich`.
+
 **Pull the image:**
 ```bash
 # Latest build from main branch
-docker pull ghcr.io/joeru/claw2immich:latest
+docker pull ghcr.io/joeru/mcp4immich:latest
 
 # Latest build from develop branch
-docker pull ghcr.io/joeru/claw2immich:develop
+docker pull ghcr.io/joeru/mcp4immich:develop
 
 # Specific version (e.g., 0.1.0)
-docker pull ghcr.io/joeru/claw2immich:0.1.0
+docker pull ghcr.io/joeru/mcp4immich:0.1.0
 ```
 
 **Run the image:**
@@ -337,7 +339,7 @@ docker pull ghcr.io/joeru/claw2immich:0.1.0
 docker run -e IMMICH_BASE_URL=https://immich.example.com \
            -e IMMICH_API_KEY=your-api-key \
            -p 8000:8000 \
-           ghcr.io/joeru/claw2immich:latest
+           ghcr.io/joeru/mcp4immich:latest
 ```
 
 **Run with SSE transport (HTTP):**
@@ -347,7 +349,7 @@ docker run -e IMMICH_BASE_URL=https://immich.example.com \
            -e MCP_TRANSPORT=sse \
            -e MCP_HOST=0.0.0.0 \
            -p 8000:8000 \
-           ghcr.io/joeru/claw2immich:latest
+           ghcr.io/joeru/mcp4immich:latest
 ```
 
 **Run with read-only profile:**
@@ -356,7 +358,7 @@ docker run -e IMMICH_BASE_URL=https://immich.example.com \
            -e IMMICH_API_KEY=your-readonly-api-key \
            -e IMMICH_PROFILE=read_only \
            -p 8000:8000 \
-           ghcr.io/joeru/claw2immich:latest
+           ghcr.io/joeru/mcp4immich:latest
 ```
 
 Images support multiple architectures (amd64, arm64) and are automatically selected based on your platform.

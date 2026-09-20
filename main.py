@@ -1,14 +1,14 @@
 import logging
 
-from claw2immich.capabilities import (
+from mcp4immich.capabilities import (
     _discover_capabilities,
     _discover_write_capability,
     _write_probe_settings,
 )
-from claw2immich.config import get_mcp_settings
-from claw2immich.http_client import _probe
-from claw2immich.mcp_app import run
-from claw2immich.openapi import (
+from mcp4immich.config import get_mcp_settings
+from mcp4immich.http_client import _probe
+from mcp4immich.mcp_app import run
+from mcp4immich.openapi import (
     _fetch_openapi_spec,
     _list_openapi_operations,
     _merge_parameters,
@@ -17,7 +17,7 @@ from claw2immich.openapi import (
     _operation_request_body_spec,
     _tool_name_for_operation,
 )
-from claw2immich.tooling import tool_access_report
+from mcp4immich.tooling import tool_access_report
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def _configure_logging() -> None:
 
 def main() -> None:
     _configure_logging()
-    logger.info("Starting claw2immich MCP server")
+    logger.info("Starting mcp4immich MCP server")
     run()
 
 

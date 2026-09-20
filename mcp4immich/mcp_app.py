@@ -10,7 +10,7 @@ from .tooling import _register_tools
 
 logger = logging.getLogger(__name__)
 
-__version__ = version("claw2immich")
+__version__ = version("mcp4immich")
 
 
 def _resolve_external_domain() -> str | None:
@@ -23,7 +23,7 @@ def create_mcp() -> MCPServer:
     settings = get_mcp_settings()
     instructions = build_server_instructions(_resolve_external_domain())
     return MCPServer(
-        "claw2immich",
+        "mcp4immich",
         version=__version__,
         log_level=settings["log_level"],
         instructions=instructions,

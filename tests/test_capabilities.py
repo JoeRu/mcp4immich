@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from claw2immich import capabilities
+from mcp4immich import capabilities
 
 
 class CapabilityErrorReasonTests(unittest.TestCase):
@@ -17,7 +17,7 @@ class CapabilityErrorReasonTests(unittest.TestCase):
             {"IMMICH_API_KEY": "test", "IMMICH_BASE_URL": "http://example.com"},
             clear=False,
         ):
-            with patch("claw2immich.capabilities._probe", return_value=probe):
+            with patch("mcp4immich.capabilities._probe", return_value=probe):
                 report = capabilities._discover_capabilities()
         reason = report["get_current_user"]["reason"]
         self.assertIn("HTTP 500", reason)
@@ -34,7 +34,7 @@ class CapabilityErrorReasonTests(unittest.TestCase):
             {"IMMICH_API_KEY": "test", "IMMICH_BASE_URL": "http://example.com"},
             clear=False,
         ):
-            with patch("claw2immich.capabilities._probe", return_value=probe):
+            with patch("mcp4immich.capabilities._probe", return_value=probe):
                 report = capabilities._discover_capabilities()
         reason = report["get_current_user"]["reason"]
         self.assertIn("Network error", reason)
@@ -47,7 +47,7 @@ class CapabilityErrorReasonTests(unittest.TestCase):
             {"IMMICH_API_KEY": "test", "IMMICH_BASE_URL": "http://example.com"},
             clear=False,
         ):
-            with patch("claw2immich.capabilities._probe", return_value=probe):
+            with patch("mcp4immich.capabilities._probe", return_value=probe):
                 report = capabilities._discover_write_capability()
         reason = str(report.get("reason"))
         self.assertIn("lacks permission", reason)
@@ -59,7 +59,7 @@ class CapabilityErrorReasonTests(unittest.TestCase):
             {"IMMICH_API_KEY": "test", "IMMICH_BASE_URL": "http://example.com"},
             clear=False,
         ):
-            with patch("claw2immich.capabilities._probe", return_value=probe):
+            with patch("mcp4immich.capabilities._probe", return_value=probe):
                 report = capabilities._discover_write_capability()
         reason = str(report.get("reason"))
         self.assertIn("HTTP 500", reason)
@@ -75,7 +75,7 @@ class CapabilityErrorReasonTests(unittest.TestCase):
             {"IMMICH_API_KEY": "test", "IMMICH_BASE_URL": "http://example.com"},
             clear=False,
         ):
-            with patch("claw2immich.capabilities._probe", return_value=probe):
+            with patch("mcp4immich.capabilities._probe", return_value=probe):
                 report = capabilities._discover_write_capability()
         reason = str(report.get("reason"))
         self.assertIn("Network error", reason)

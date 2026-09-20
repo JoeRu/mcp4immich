@@ -7,7 +7,7 @@ class TestDeduplicateName(unittest.TestCase):
     
     def test_deduplicate_name_no_conflict(self):
         """Test _deduplicate_name when name doesn't exist in seen set."""
-        from claw2immich.tooling import _deduplicate_name
+        from mcp4immich.tooling import _deduplicate_name
         
         seen = {"tool_a", "tool_b"}
         result = _deduplicate_name("tool_c", seen)
@@ -15,7 +15,7 @@ class TestDeduplicateName(unittest.TestCase):
     
     def test_deduplicate_name_with_conflict(self):
         """Test _deduplicate_name when name already exists."""
-        from claw2immich.tooling import _deduplicate_name
+        from mcp4immich.tooling import _deduplicate_name
         
         seen = {"search_assets"}
         result = _deduplicate_name("search_assets", seen)
@@ -23,7 +23,7 @@ class TestDeduplicateName(unittest.TestCase):
     
     def test_deduplicate_name_multiple_conflicts(self):
         """Test _deduplicate_name with multiple existing suffixes."""
-        from claw2immich.tooling import _deduplicate_name
+        from mcp4immich.tooling import _deduplicate_name
         
         seen = {"search_assets", "search_assets_2", "search_assets_3"}
         result = _deduplicate_name("search_assets", seen)
@@ -31,7 +31,7 @@ class TestDeduplicateName(unittest.TestCase):
     
     def test_deduplicate_name_empty_seen(self):
         """Test _deduplicate_name with empty seen set."""
-        from claw2immich.tooling import _deduplicate_name
+        from mcp4immich.tooling import _deduplicate_name
         
         seen: set[str] = set()
         result = _deduplicate_name("tool_a", seen)
@@ -43,7 +43,7 @@ class TestResolveSchema(unittest.TestCase):
     
     def test_resolve_schema_no_ref(self):
         """Test _resolve_schema with schema that has no $ref."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         schema = {"type": "string", "description": "A string field"}
         spec = {}
@@ -52,7 +52,7 @@ class TestResolveSchema(unittest.TestCase):
     
     def test_resolve_schema_single_ref(self):
         """Test _resolve_schema resolves a single $ref."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         schema = {"$ref": "#/components/schemas/SearchDto"}
         spec = {
@@ -73,7 +73,7 @@ class TestResolveSchema(unittest.TestCase):
     
     def test_resolve_schema_nested_ref(self):
         """Test _resolve_schema resolves nested $ref (schema referencing another schema)."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         # SearchDto has a $ref to another schema
         schema = {"$ref": "#/components/schemas/SearchDto"}
@@ -100,7 +100,7 @@ class TestResolveSchema(unittest.TestCase):
     
     def test_resolve_schema_cycle_detection(self):
         """Test _resolve_schema handles circular references gracefully."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         # Schema A references B, B references A (cycle)
         schema = {"$ref": "#/components/schemas/SchemaA"}
@@ -122,7 +122,7 @@ class TestResolveSchema(unittest.TestCase):
     
     def test_resolve_schema_depth_limit(self):
         """Test _resolve_schema respects depth limit."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         # Create a deep chain of references
         spec = {"components": {"schemas": {}}}
@@ -140,7 +140,7 @@ class TestResolveSchema(unittest.TestCase):
     
     def test_resolve_schema_missing_ref(self):
         """Test _resolve_schema with missing referenced schema."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         schema = {"$ref": "#/components/schemas/NonExistent"}
         spec = {"components": {"schemas": {}}}
@@ -150,14 +150,14 @@ class TestResolveSchema(unittest.TestCase):
     
     def test_resolve_schema_none_input(self):
         """Test _resolve_schema with None input."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         result = _resolve_schema(None, {})
         assert result is None
     
     def test_resolve_schema_non_dict_input(self):
         """Test _resolve_schema with non-dict input."""
-        from claw2immich.openapi import _resolve_schema
+        from mcp4immich.openapi import _resolve_schema
         
         result = _resolve_schema("not a dict", {})
         assert result is None

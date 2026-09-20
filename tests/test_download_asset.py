@@ -1,14 +1,14 @@
 from unittest.mock import patch
 
-from claw2immich.tooling import download_asset
+from mcp4immich.tooling import download_asset
 
 
 def test_download_asset_default_base64() -> None:
     with patch(
-        "claw2immich.tooling.get_download_asset_delivery_mode",
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
         return_value="inline_base64",
     ), patch(
-        "claw2immich.tooling._request_bytes",
+        "mcp4immich.tooling._request_bytes",
         return_value=(
             b"abc",
             {
@@ -35,16 +35,16 @@ def test_download_asset_rejects_invalid_output() -> None:
 def test_download_asset_immich_link_delivery_mode() -> None:
     """immich_link falls back to base_url when no external domain is configured."""
     with patch(
-        "claw2immich.tooling.get_download_asset_delivery_mode",
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
         return_value="immich_link",
     ), patch(
-        "claw2immich.tooling._request",
+        "mcp4immich.tooling._request",
         side_effect=Exception("shared-link api unavailable"),
     ), patch(
-        "claw2immich.tooling.get_external_domain",
+        "mcp4immich.tooling.get_external_domain",
         return_value=None,
     ), patch(
-        "claw2immich.tooling._get_config",
+        "mcp4immich.tooling._get_config",
         return_value={
             "base_url": "https://immich.example.com",
             "api_key": "test",
@@ -62,16 +62,16 @@ def test_download_asset_immich_link_delivery_mode() -> None:
 def test_download_asset_immich_link_prefers_external_domain() -> None:
     """immich_link uses the external domain when it is configured."""
     with patch(
-        "claw2immich.tooling.get_download_asset_delivery_mode",
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
         return_value="immich_link",
     ), patch(
-        "claw2immich.tooling._request",
+        "mcp4immich.tooling._request",
         side_effect=Exception("shared-link api unavailable"),
     ), patch(
-        "claw2immich.tooling.get_external_domain",
+        "mcp4immich.tooling.get_external_domain",
         return_value="https://photos.mydomain.com",
     ), patch(
-        "claw2immich.tooling._get_config",
+        "mcp4immich.tooling._get_config",
         return_value={
             "base_url": "http://immich:2283",
             "api_key": "test",
@@ -87,13 +87,13 @@ def test_download_asset_immich_link_prefers_external_domain() -> None:
 
 def test_download_asset_shared_link_mode_success() -> None:
     with patch(
-        "claw2immich.tooling.get_download_asset_delivery_mode",
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
         return_value="shared_link",
     ), patch(
-        "claw2immich.tooling.get_external_domain",
+        "mcp4immich.tooling.get_external_domain",
         return_value="https://photos.mydomain.com",
     ), patch(
-        "claw2immich.tooling._request",
+        "mcp4immich.tooling._request",
         return_value={
             "token": "abc-token",
             "expiresAt": "2026-02-19T13:00:00Z",
@@ -112,10 +112,10 @@ def test_download_asset_shared_link_mode_success() -> None:
 
 def test_download_asset_shared_link_mode_failure() -> None:
     with patch(
-        "claw2immich.tooling.get_download_asset_delivery_mode",
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
         return_value="shared_link",
     ), patch(
-        "claw2immich.tooling._request",
+        "mcp4immich.tooling._request",
         side_effect=Exception("forbidden"),
     ):
         result = download_asset("asset-shared-fail")
@@ -127,13 +127,13 @@ def test_download_asset_shared_link_mode_failure() -> None:
 
 def test_download_asset_immich_link_prefers_shared_link_when_available() -> None:
     with patch(
-        "claw2immich.tooling.get_download_asset_delivery_mode",
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
         return_value="immich_link",
     ), patch(
-        "claw2immich.tooling.get_external_domain",
+        "mcp4immich.tooling.get_external_domain",
         return_value="https://photos.mydomain.com",
     ), patch(
-        "claw2immich.tooling._request",
+        "mcp4immich.tooling._request",
         return_value={
             "url": "https://photos.mydomain.com/share/custom-link",
             "expiresAt": "2026-02-19T13:00:00Z",
@@ -148,13 +148,13 @@ def test_download_asset_immich_link_prefers_shared_link_when_available() -> None
 
 def test_download_asset_default_delivery_mode_is_shared_link() -> None:
     with patch(
-        "claw2immich.tooling.get_download_asset_delivery_mode",
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
         return_value="shared_link",
     ), patch(
-        "claw2immich.tooling.get_external_domain",
+        "mcp4immich.tooling.get_external_domain",
         return_value="https://photos.mydomain.com",
     ), patch(
-        "claw2immich.tooling._request",
+        "mcp4immich.tooling._request",
         return_value={
             "token": "default-token",
             "expiresAt": "2026-02-19T13:00:00Z",

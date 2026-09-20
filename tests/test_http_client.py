@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 
-from claw2immich.http_client import (
+from mcp4immich.http_client import (
     ImmichAPIError,
     ImmichConfigError,
     ImmichNetworkError,
@@ -41,8 +41,8 @@ class TestBuildHeaders(unittest.TestCase):
 
 
 class TestRequest(unittest.TestCase):
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
     def test_request_success_json(self, mock_client_class, mock_get_config):
         mock_get_config.return_value = {
             "base_url": "http://localhost",
@@ -62,8 +62,8 @@ class TestRequest(unittest.TestCase):
         result = _request("GET", "/api/test")
         self.assertEqual(result, {"result": "success"})
 
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
     def test_request_success_text(self, mock_client_class, mock_get_config):
         mock_get_config.return_value = {
             "base_url": "http://localhost",
@@ -83,8 +83,8 @@ class TestRequest(unittest.TestCase):
         result = _request("GET", "/api/test")
         self.assertEqual(result, "plain text response")
 
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
     def test_request_success_binary_wrapped_base64(
         self,
         mock_client_class,
@@ -111,8 +111,8 @@ class TestRequest(unittest.TestCase):
         self.assertEqual(result["size_bytes"], 3)
         self.assertEqual(result["data"], "AAEC")
 
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
     def test_request_http_status_error(self, mock_client_class, mock_get_config):
         mock_get_config.return_value = {
             "base_url": "http://localhost",
@@ -136,8 +136,8 @@ class TestRequest(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 403)
         self.assertEqual(ctx.exception.detail, "Forbidden")
 
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
     def test_request_network_error(self, mock_client_class, mock_get_config):
         mock_get_config.return_value = {
             "base_url": "http://localhost",
@@ -154,7 +154,7 @@ class TestRequest(unittest.TestCase):
             _request("GET", "/api/test")
         self.assertIn("Connection refused", str(ctx.exception))
 
-    @patch("claw2immich.http_client._get_config")
+    @patch("mcp4immich.http_client._get_config")
     def test_request_config_error(self, mock_get_config):
         mock_get_config.return_value = {
             "base_url": "http://localhost",
@@ -166,8 +166,8 @@ class TestRequest(unittest.TestCase):
             _request("GET", "/api/test", require_auth=True)
         self.assertIn("IMMICH_API_KEY or IMMICH_API_TOKEN", str(ctx.exception))
 
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
     def test_request_bytes_success(self, mock_client_class, mock_get_config):
         mock_get_config.return_value = {
             "base_url": "http://localhost",
@@ -195,9 +195,9 @@ class TestRequest(unittest.TestCase):
 
 class TestHTTPWarning(unittest.TestCase):
     @patch.dict(os.environ, {}, clear=False)
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
-    @patch("claw2immich.http_client.logger")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client.logger")
     def test_warn_credentials_over_http(
         self,
         mock_logger,
@@ -234,9 +234,9 @@ class TestHTTPWarning(unittest.TestCase):
         )
 
     @patch.dict(os.environ, {"IMMICH_ALLOW_HTTP": "true"}, clear=False)
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
-    @patch("claw2immich.http_client.logger")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client.logger")
     def test_suppress_http_warning_with_flag(
         self,
         mock_logger,
@@ -272,9 +272,9 @@ class TestHTTPWarning(unittest.TestCase):
             "Expected no warning when IMMICH_ALLOW_HTTP=true",
         )
 
-    @patch("claw2immich.http_client._get_config")
-    @patch("claw2immich.http_client.httpx.Client")
-    @patch("claw2immich.http_client.logger")
+    @patch("mcp4immich.http_client._get_config")
+    @patch("mcp4immich.http_client.httpx.Client")
+    @patch("mcp4immich.http_client.logger")
     def test_no_warning_for_https(
         self,
         mock_logger,

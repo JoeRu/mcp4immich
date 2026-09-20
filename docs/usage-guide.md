@@ -3,7 +3,7 @@ description: 'Usage Guide only for AI Agents as mcp clients.'
 agent: 'agent'
 ---
 
-# claw2immich MCP Usage Guide
+# mcp4immich MCP Usage Guide
 
 This guide explains how to use the MCP server to discover tools and perform common Immich workflows. It is designed for MCP clients and AI agents.
 

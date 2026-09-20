@@ -1,6 +1,6 @@
 import unittest
 
-from claw2immich.openapi import _permission_is_read
+from mcp4immich.openapi import _permission_is_read
 
 
 class TestPermissionIsRead(unittest.TestCase):
@@ -37,7 +37,7 @@ class TestNonePermissionFiltering(unittest.TestCase):
         the operation should not be treated as a write operation based
         solely on the HTTP method.
         """
-        from claw2immich.openapi import _permission_is_read
+        from mcp4immich.openapi import _permission_is_read
 
         # Simulate the logic from tooling.py line 95-96
         WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

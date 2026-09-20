@@ -1,10 +1,10 @@
-"""Tests for URL decoration functions in claw2immich/tooling.py"""
+"""Tests for URL decoration functions in mcp4immich/tooling.py"""
 import pytest
 
 
 def test_should_decorate_response_asset():
     """Test _should_decorate_response detects asset endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/assets/{id}")
     assert result is True
@@ -13,7 +13,7 @@ def test_should_decorate_response_asset():
 
 def test_should_decorate_response_album():
     """Test _should_decorate_response detects album endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/albums/{id}")
     assert result is True
@@ -22,7 +22,7 @@ def test_should_decorate_response_album():
 
 def test_should_decorate_response_person():
     """Test _should_decorate_response detects person endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/people/{id}")
     assert result is True
@@ -31,7 +31,7 @@ def test_should_decorate_response_person():
 
 def test_should_decorate_response_place():
     """Test _should_decorate_response detects place endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/places/{id}")
     assert result is True
@@ -40,7 +40,7 @@ def test_should_decorate_response_place():
 
 def test_should_decorate_response_no_match():
     """Test _should_decorate_response ignores non-matching endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/server/version")
     assert result is False
@@ -49,7 +49,7 @@ def test_should_decorate_response_no_match():
 
 def test_should_decorate_response_post_non_search_not_decorated():
     """Test _should_decorate_response does not decorate non-search POST methods."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("POST", "/assets/{id}")
     assert result is False
@@ -58,7 +58,7 @@ def test_should_decorate_response_post_non_search_not_decorated():
 
 def test_should_decorate_response_post_search_decorated():
     """Test _should_decorate_response decorates POST search endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
 
     result, url_type = _should_decorate_response("POST", "/search/assets")
     assert result is True
@@ -67,7 +67,7 @@ def test_should_decorate_response_post_search_decorated():
 
 def test_extract_single_id_with_id_field():
     """Test _extract_single_id extracts id field."""
-    from claw2immich.tooling import _extract_single_id
+    from mcp4immich.tooling import _extract_single_id
     
     data = {"id": "abc-123", "name": "Test Asset"}
     result = _extract_single_id(data)
@@ -76,7 +76,7 @@ def test_extract_single_id_with_id_field():
 
 def test_extract_single_id_with_albumid_field():
     """Test _extract_single_id extracts albumId field."""
-    from claw2immich.tooling import _extract_single_id
+    from mcp4immich.tooling import _extract_single_id
     
     data = {"albumId": "album-456", "albumName": "My Album"}
     result = _extract_single_id(data)
@@ -85,7 +85,7 @@ def test_extract_single_id_with_albumid_field():
 
 def test_extract_single_id_with_personid_field():
     """Test _extract_single_id extracts personId field."""
-    from claw2immich.tooling import _extract_single_id
+    from mcp4immich.tooling import _extract_single_id
     
     data = {"personId": "person-789", "name": "John"}
     result = _extract_single_id(data)
@@ -94,7 +94,7 @@ def test_extract_single_id_with_personid_field():
 
 def test_extract_single_id_with_placeid_field():
     """Test _extract_single_id extracts placeId field."""
-    from claw2immich.tooling import _extract_single_id
+    from mcp4immich.tooling import _extract_single_id
     
     data = {"placeId": "place-999", "name": "New York"}
     result = _extract_single_id(data)
@@ -103,7 +103,7 @@ def test_extract_single_id_with_placeid_field():
 
 def test_extract_single_id_no_id():
     """Test _extract_single_id returns None when no ID found."""
-    from claw2immich.tooling import _extract_single_id
+    from mcp4immich.tooling import _extract_single_id
     
     data = {"name": "Test", "description": "No ID here"}
     result = _extract_single_id(data)
@@ -112,7 +112,7 @@ def test_extract_single_id_no_id():
 
 def test_extract_single_id_not_dict():
     """Test _extract_single_id returns None for non-dict input."""
-    from claw2immich.tooling import _extract_single_id
+    from mcp4immich.tooling import _extract_single_id
     
     result = _extract_single_id("not a dict")
     assert result is None
@@ -120,7 +120,7 @@ def test_extract_single_id_not_dict():
 
 def test_extract_single_id_empty_dict():
     """Test _extract_single_id returns None for empty dict."""
-    from claw2immich.tooling import _extract_single_id
+    from mcp4immich.tooling import _extract_single_id
     
     result = _extract_single_id({})
     assert result is None
@@ -128,7 +128,7 @@ def test_extract_single_id_empty_dict():
 
 def test_decorate_response_asset():
     """Test _decorate_response adds web_url for asset."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"id": "asset-123", "name": "My Photo"}
     decorated = _decorate_response(response, "https://immich.example.com", "asset")
@@ -139,7 +139,7 @@ def test_decorate_response_asset():
 
 def test_decorate_response_album():
     """Test _decorate_response adds web_url for album."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"albumId": "album-456", "albumName": "My Album"}
     decorated = _decorate_response(response, "https://immich.example.com", "album")
@@ -150,7 +150,7 @@ def test_decorate_response_album():
 
 def test_decorate_response_person():
     """Test _decorate_response adds web_url for person."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"personId": "person-789", "name": "John"}
     decorated = _decorate_response(response, "https://immich.example.com", "person")
@@ -161,7 +161,7 @@ def test_decorate_response_person():
 
 def test_decorate_response_place():
     """Test _decorate_response adds web_url for place."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"placeId": "place-999", "name": "New York"}
     decorated = _decorate_response(response, "https://immich.example.com", "place")
@@ -172,7 +172,7 @@ def test_decorate_response_place():
 
 def test_decorate_response_no_domain():
     """Test _decorate_response returns unchanged response when no domain."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"id": "asset-123", "name": "My Photo"}
     decorated = _decorate_response(response, None, "asset")
@@ -183,7 +183,7 @@ def test_decorate_response_no_domain():
 
 def test_decorate_response_not_dict():
     """Test _decorate_response returns unchanged response for non-dict."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = "string response"
     decorated = _decorate_response(response, "https://immich.example.com", "asset")
@@ -193,7 +193,7 @@ def test_decorate_response_not_dict():
 
 def test_decorate_response_no_id():
     """Test _decorate_response returns unchanged response when no ID."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"name": "No ID here", "description": "Test"}
     decorated = _decorate_response(response, "https://immich.example.com", "asset")
@@ -204,7 +204,7 @@ def test_decorate_response_no_id():
 
 def test_decorate_response_existing_web_url():
     """Test _decorate_response does not overwrite existing web_url."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"id": "asset-123", "web_url": "https://custom.url"}
     decorated = _decorate_response(response, "https://immich.example.com", "asset")
@@ -215,7 +215,7 @@ def test_decorate_response_existing_web_url():
 
 def test_decorate_response_http_domain():
     """Test _decorate_response works with HTTP domain."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"id": "asset-123"}
     decorated = _decorate_response(response, "http://localhost:2283", "asset")
@@ -226,7 +226,7 @@ def test_decorate_response_http_domain():
 
 def test_should_decorate_response_search_endpoint():
     """Test _should_decorate_response detects search endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/search/array")
     assert result is True
@@ -235,7 +235,7 @@ def test_should_decorate_response_search_endpoint():
 
 def test_should_decorate_response_assets_list():
     """Test _should_decorate_response detects bulk assets endpoint."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/assets")
     assert result is True
@@ -244,7 +244,7 @@ def test_should_decorate_response_assets_list():
 
 def test_should_decorate_response_albums_list():
     """Test _should_decorate_response detects bulk albums endpoint."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/albums")
     assert result is True
@@ -253,7 +253,7 @@ def test_should_decorate_response_albums_list():
 
 def test_detect_response_type_image():
     """Test _detect_response_type identifies IMAGE type as asset."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     item = {"id": "asset-123", "type": "IMAGE", "name": "Photo"}
     url_type = _detect_response_type(item)
@@ -262,7 +262,7 @@ def test_detect_response_type_image():
 
 def test_detect_response_type_video():
     """Test _detect_response_type identifies VIDEO type as asset."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     item = {"id": "video-456", "type": "VIDEO", "name": "Movie"}
     url_type = _detect_response_type(item)
@@ -271,7 +271,7 @@ def test_detect_response_type_video():
 
 def test_detect_response_type_memory():
     """Test _detect_response_type identifies MEMORY type as asset."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     item = {"id": "mem-789", "type": "MEMORY", "name": "Memory"}
     url_type = _detect_response_type(item)
@@ -280,7 +280,7 @@ def test_detect_response_type_memory():
 
 def test_detect_response_type_album():
     """Test _detect_response_type identifies ALBUM type."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     item = {"albumId": "album-123", "type": "ALBUM", "albumName": "Collection"}
     url_type = _detect_response_type(item)
@@ -289,7 +289,7 @@ def test_detect_response_type_album():
 
 def test_detect_response_type_person():
     """Test _detect_response_type identifies PERSON type."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     item = {"personId": "person-456", "type": "PERSON", "name": "John"}
     url_type = _detect_response_type(item)
@@ -298,7 +298,7 @@ def test_detect_response_type_person():
 
 def test_detect_response_type_place():
     """Test _detect_response_type identifies PLACE type."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     item = {"placeId": "place-789", "type": "PLACE", "name": "New York"}
     url_type = _detect_response_type(item)
@@ -307,7 +307,7 @@ def test_detect_response_type_place():
 
 def test_detect_response_type_infer_from_field():
     """Test _detect_response_type infers type from ID field names."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     # Can't determine without type field
     item = {"albumId": "album-123"}
@@ -317,7 +317,7 @@ def test_detect_response_type_infer_from_field():
 
 def test_detect_response_type_no_type():
     """Test _detect_response_type returns None when unable to determine."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     item = {"name": "Unknown", "description": "No type field"}
     url_type = _detect_response_type(item)
@@ -326,7 +326,7 @@ def test_detect_response_type_no_type():
 
 def test_detect_response_type_not_dict():
     """Test _detect_response_type returns None for non-dict."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     url_type = _detect_response_type("string")
     assert url_type is None
@@ -334,7 +334,7 @@ def test_detect_response_type_not_dict():
 
 def test_decorate_response_array_with_images():
     """Test _decorate_response handles array of IMAGE items."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "img-1", "type": "IMAGE", "name": "Photo 1"},
@@ -350,7 +350,7 @@ def test_decorate_response_array_with_images():
 
 def test_decorate_response_array_mixed_types():
     """Test _decorate_response handles array with mixed types."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "img-1", "type": "IMAGE", "name": "Photo"},
@@ -368,7 +368,7 @@ def test_decorate_response_array_mixed_types():
 
 def test_decorate_response_array_preserves_structure():
     """Test _decorate_response preserves array structure."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "img-1", "type": "IMAGE"},
@@ -384,7 +384,7 @@ def test_decorate_response_array_preserves_structure():
 
 def test_decorate_response_array_empty():
     """Test _decorate_response handles empty arrays."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = []
     decorated = _decorate_response(response, "https://immich.example.com", "array")
@@ -394,7 +394,7 @@ def test_decorate_response_array_empty():
 
 def test_decorate_response_array_no_domain():
     """Test _decorate_response returns array unchanged when no domain."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "img-1", "type": "IMAGE"},
@@ -410,7 +410,7 @@ def test_decorate_response_array_no_domain():
 
 def test_decorate_response_array_skip_items_without_id():
     """Test _decorate_response skips array items without ID."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "img-1", "type": "IMAGE"},
@@ -428,7 +428,7 @@ def test_decorate_response_array_skip_items_without_id():
 
 def test_decorate_response_asset_uses_assetid_over_personid():
     """Asset decoration should use asset UUID, not person UUID fields."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "assetId": "asset-123",
@@ -443,7 +443,7 @@ def test_decorate_response_asset_uses_assetid_over_personid():
 
 def test_decorate_response_asset_ignores_personid_when_id_present():
     """Asset decoration should use id and never fall back to personId for /photos URLs."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "id": "asset-456",
@@ -457,7 +457,7 @@ def test_decorate_response_asset_ignores_personid_when_id_present():
 
 def test_decorate_response_asset_without_asset_id_skips_personid():
     """Asset decoration should not build /photos URL from personId when asset ID is missing."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "personId": "person-123",
@@ -470,7 +470,7 @@ def test_decorate_response_asset_without_asset_id_skips_personid():
 
 def test_decorate_response_array_non_dict_items():
     """Test _decorate_response skips non-dict items in arrays."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "img-1", "type": "IMAGE"},
@@ -488,7 +488,7 @@ def test_decorate_response_array_non_dict_items():
 
 def test_decorate_response_backward_compat_single_object():
     """Test _decorate_response maintains backward compatibility for single objects."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     # Single object with specific url_type (not 'array')
     response = {"id": "asset-123"}
@@ -501,7 +501,7 @@ def test_decorate_response_backward_compat_single_object():
 
 def test_decorate_response_backward_compat_album():
     """Test _decorate_response maintains backward compatibility for albums."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {"albumId": "album-456"}
     decorated = _decorate_response(response, "https://immich.example.com", "album")
@@ -513,7 +513,7 @@ def test_decorate_response_backward_compat_album():
 
 def test_decorate_response_array_videos():
     """Test _decorate_response handles VIDEO items in arrays."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "vid-1", "type": "VIDEO", "name": "Movie 1"},
@@ -530,7 +530,7 @@ def test_decorate_response_array_videos():
 
 def test_decorate_response_array_existing_web_urls():
     """Test _decorate_response doesn't overwrite existing web_urls in arrays."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = [
         {"id": "img-1", "type": "IMAGE", "web_url": "https://custom.com/1"},
@@ -547,7 +547,7 @@ def test_decorate_response_array_existing_web_urls():
 
 def test_extract_decoratable_array_direct_list():
     """Test _extract_decoratable_array returns direct list as-is."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
     
     response = [
         {"id": "img-1", "type": "IMAGE"},
@@ -561,7 +561,7 @@ def test_extract_decoratable_array_direct_list():
 
 def test_extract_decoratable_array_results_wrapper():
     """Test _extract_decoratable_array extracts from 'results' field."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
     
     response = {
         "results": [
@@ -579,7 +579,7 @@ def test_extract_decoratable_array_results_wrapper():
 
 def test_extract_decoratable_array_data_wrapper():
     """Test _extract_decoratable_array extracts from 'data' field."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
     
     response = {
         "data": [
@@ -596,7 +596,7 @@ def test_extract_decoratable_array_data_wrapper():
 
 def test_extract_decoratable_array_assets_wrapper():
     """Test _extract_decoratable_array extracts from 'assets' field."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
     
     response = {
         "assets": [
@@ -612,7 +612,7 @@ def test_extract_decoratable_array_assets_wrapper():
 
 def test_extract_decoratable_array_items_wrapper():
     """Test _extract_decoratable_array extracts from 'items' field."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
     
     response = {
         "items": [
@@ -627,7 +627,7 @@ def test_extract_decoratable_array_items_wrapper():
 
 def test_extract_decoratable_array_no_wrapper():
     """Test _extract_decoratable_array returns None when no array found."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
     
     response = {"name": "Search Result", "count": 5}
     
@@ -638,7 +638,7 @@ def test_extract_decoratable_array_no_wrapper():
 
 def test_extract_decoratable_array_non_dict():
     """Test _extract_decoratable_array returns None for non-dict, non-list."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
     
     array, wrapper_type = _extract_decoratable_array("string")
     assert array is None
@@ -647,7 +647,7 @@ def test_extract_decoratable_array_non_dict():
 
 def test_decorate_response_wrapped_results():
     """Test _decorate_response handles wrapped 'results' array."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {
         "results": [
@@ -669,7 +669,7 @@ def test_decorate_response_wrapped_results():
 
 def test_decorate_response_wrapped_data():
     """Test _decorate_response handles wrapped 'data' array with pagination."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {
         "data": [
@@ -689,7 +689,7 @@ def test_decorate_response_wrapped_data():
 
 def test_decorate_response_wrapped_assets():
     """Test _decorate_response handles 'assets' wrapper field."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {
         "assets": [
@@ -707,7 +707,7 @@ def test_decorate_response_wrapped_assets():
 
 def test_decorate_response_wrapped_preserves_metadata():
     """Test _decorate_response preserves metadata fields in wrapped responses."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {
         "results": [
@@ -729,7 +729,7 @@ def test_decorate_response_wrapped_preserves_metadata():
 
 def test_should_decorate_response_explore_endpoint():
     """Test _should_decorate_response detects explore endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/explore")
     assert result is True
@@ -738,7 +738,7 @@ def test_should_decorate_response_explore_endpoint():
 
 def test_should_decorate_response_memories_endpoint():
     """Test _should_decorate_response detects memories endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/memories")
     assert result is True
@@ -747,7 +747,7 @@ def test_should_decorate_response_memories_endpoint():
 
 def test_should_decorate_response_cine_endpoint():
     """Test _should_decorate_response detects cine endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/cine")
     assert result is True
@@ -756,7 +756,7 @@ def test_should_decorate_response_cine_endpoint():
 
 def test_should_decorate_response_timelines_endpoint():
     """Test _should_decorate_response detects timeline endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/timelines")
     assert result is True
@@ -765,7 +765,7 @@ def test_should_decorate_response_timelines_endpoint():
 
 def test_should_decorate_response_statistics_endpoint():
     """Test _should_decorate_response detects statistics endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/statistics")
     assert result is True
@@ -774,7 +774,7 @@ def test_should_decorate_response_statistics_endpoint():
 
 def test_should_decorate_response_map_endpoint():
     """Test _should_decorate_response detects map endpoints."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/map")
     assert result is True
@@ -783,7 +783,7 @@ def test_should_decorate_response_map_endpoint():
 
 def test_should_decorate_response_bulk_albums():
     """Test _should_decorate_response detects bulk albums endpoint."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/albums")
     assert result is True
@@ -792,7 +792,7 @@ def test_should_decorate_response_bulk_albums():
 
 def test_should_decorate_response_bulk_people():
     """Test _should_decorate_response detects bulk people endpoint."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/people")
     assert result is True
@@ -801,7 +801,7 @@ def test_should_decorate_response_bulk_people():
 
 def test_should_decorate_response_bulk_places():
     """Test _should_decorate_response detects bulk places endpoint."""
-    from claw2immich.tooling import _should_decorate_response
+    from mcp4immich.tooling import _should_decorate_response
     
     result, url_type = _should_decorate_response("GET", "/places")
     assert result is True
@@ -810,7 +810,7 @@ def test_should_decorate_response_bulk_places():
 
 def test_decorate_response_complex_nested_search_result():
     """Test _decorate_response with realistic search result structure."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     # Realistic search response structure
     response = {
@@ -848,7 +848,7 @@ def test_decorate_response_complex_nested_search_result():
 
 def test_decorate_response_empty_wrapped_array():
     """Test _decorate_response handles empty wrapped arrays."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     response = {
         "results": [],
@@ -863,7 +863,7 @@ def test_decorate_response_empty_wrapped_array():
 
 def test_detect_response_type_person_with_birthdate():
     """Test _detect_response_type identifies person by birthDate field (no explicit type)."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     # Person object with just "id" and "birthDate" (common in search results)
     item = {"id": "person-123", "name": "John", "birthDate": "1990-01-01"}
@@ -873,7 +873,7 @@ def test_detect_response_type_person_with_birthdate():
 
 def test_detect_response_type_person_with_thumbnailpath():
     """Test _detect_response_type identifies person by thumbnailPath field (no explicit type)."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
     
     # Person object with just "id" and "thumbnailPath" (common in people endpoint)
     item = {"id": "person-456", "name": "Jane", "thumbnailPath": "/path/to/thumb.jpg"}
@@ -883,7 +883,7 @@ def test_detect_response_type_person_with_thumbnailpath():
 
 def test_decorate_response_person_with_id_and_birthdate():
     """Test _decorate_response correctly decorates person with id + birthDate (no personId)."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     # Person object from search results with just "id" field
     response = {"id": "person-123", "name": "John", "birthDate": "1990-01-01"}
@@ -896,7 +896,7 @@ def test_decorate_response_person_with_id_and_birthdate():
 
 def test_decorate_response_person_with_id_and_thumbnailpath():
     """Test _decorate_response correctly decorates person with id + thumbnailPath (no personId)."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     # Person object from /people endpoint with just "id" field
     response = {"id": "person-456", "name": "Jane", "thumbnailPath": "/path/to/thumb.jpg"}
@@ -909,7 +909,7 @@ def test_decorate_response_person_with_id_and_thumbnailpath():
 
 def test_decorate_response_person_array_with_birthdate():
     """Test _decorate_response correctly decorates array of people with birthDate field."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     # Array of people (e.g., from search results)
     response = [
@@ -926,7 +926,7 @@ def test_decorate_response_person_array_with_birthdate():
 
 def test_decorate_response_asset_still_works_after_fix():
     """Test that image/asset decoration still works correctly (regression test)."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     # Image asset with just "id" (no birthDate, thumbnailPath, etc.)
     response = {"id": "asset-123", "type": "IMAGE", "filename": "photo.jpg"}
@@ -938,7 +938,7 @@ def test_decorate_response_asset_still_works_after_fix():
 
 def test_decorate_response_person_birthdate_has_priority_over_generic_id():
     """Test that person-specific fields take priority in type detection."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     
     # Ambiguous: has "id" which could be interpreted as asset, but has "birthDate" which indicates person
     response = {"id": "entity-789", "birthDate": "1995-03-20", "name": "Chris"}
@@ -949,7 +949,7 @@ def test_decorate_response_person_birthdate_has_priority_over_generic_id():
 
 def test_detect_response_type_person_with_ishidden():
     """Test _detect_response_type identifies person by isHidden field (always present on persons)."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
 
     # Person object that has no birthDate / thumbnailPath but has isHidden
     item = {"id": "person-789", "name": "Dana", "isHidden": False}
@@ -959,7 +959,7 @@ def test_detect_response_type_person_with_ishidden():
 
 def test_detect_response_type_person_with_faces():
     """Test _detect_response_type identifies person by faces field."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
 
     # Person object returned with a faces list (common in detailed person responses)
     item = {"id": "person-999", "name": "Eve", "faces": []}
@@ -969,7 +969,7 @@ def test_detect_response_type_person_with_faces():
 
 def test_decorate_response_person_with_ishidden_field():
     """Test _decorate_response gives /people/{id} URL when only isHidden distinguishes person."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     # Edge case: person has no birthDate or thumbnailPath — only isHidden marks it as a person
     response = {"id": "person-789", "name": "Dana", "isHidden": True}
@@ -981,7 +981,7 @@ def test_decorate_response_person_with_ishidden_field():
 
 def test_detect_response_type_album_with_albumname_only():
     """Album objects with generic id + albumName should be treated as albums."""
-    from claw2immich.tooling import _detect_response_type
+    from mcp4immich.tooling import _detect_response_type
 
     item = {"id": "album-123", "albumName": "Vacation"}
     assert _detect_response_type(item) == "album"
@@ -989,7 +989,7 @@ def test_detect_response_type_album_with_albumname_only():
 
 def test_decorate_response_album_with_albumname_field():
     """Array decoration should produce /albums/{id} for albumName-based album objects."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = [{"id": "album-123", "albumName": "Vacation"}]
     decorated = _decorate_response(response, "https://immich.example.com", "array")
@@ -1038,7 +1038,7 @@ _SEARCH_RESPONSE_FIXTURE = {
 
 def test_extract_decoratable_array_nested_sections():
     """Nested search response with dict sections should be detected as 'sections'."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
 
     arr, wtype = _extract_decoratable_array(_SEARCH_RESPONSE_FIXTURE)
     assert wtype == "sections"
@@ -1047,7 +1047,7 @@ def test_extract_decoratable_array_nested_sections():
 
 def test_extract_decoratable_array_flat_assets_still_works():
     """A response with 'assets' as a flat list should still be detected as 'wrapped'."""
-    from claw2immich.tooling import _extract_decoratable_array
+    from mcp4immich.tooling import _extract_decoratable_array
 
     flat = {"assets": [{"id": "a1"}, {"id": "a2"}], "total": 2}
     arr, wtype = _extract_decoratable_array(flat)
@@ -1057,7 +1057,7 @@ def test_extract_decoratable_array_flat_assets_still_works():
 
 def test_decorate_response_search_sections():
     """_decorate_response adds web_url inside every nested section."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     import copy
 
     response = copy.deepcopy(_SEARCH_RESPONSE_FIXTURE)
@@ -1077,7 +1077,7 @@ def test_decorate_response_search_sections():
 
 def test_decorate_response_search_preserves_metadata():
     """Decoration must not destroy totals, facets, or nextPage in sections."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
     import copy
 
     response = copy.deepcopy(_SEARCH_RESPONSE_FIXTURE)
@@ -1092,7 +1092,7 @@ def test_decorate_response_search_preserves_metadata():
 
 def test_decorate_response_search_empty_sections():
     """Empty items lists are harmless."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "assets": {"total": 0, "count": 0, "items": [], "facets": []},
@@ -1105,7 +1105,7 @@ def test_decorate_response_search_empty_sections():
 
 def test_decorate_response_search_person_uuid_not_leaked():
     """Item 56: asset with nested people must NOT use person UUID in web_url."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "assets": {
@@ -1133,7 +1133,7 @@ def test_decorate_response_search_person_uuid_not_leaked():
 def test_decorate_response_search_asset_with_personid_field():
     """Item 56 edge-case: asset containing a stray personId field should still
     receive an asset URL, not a person URL, when type='IMAGE'."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "assets": {
@@ -1157,7 +1157,7 @@ def test_decorate_response_search_asset_with_personid_field():
 
 def test_decorate_single_asset_response_with_people_keeps_top_level_asset_url():
     """Item 58: asset detail response should decorate top-level asset, not nested relation arrays."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "id": "asset-main",
@@ -1172,7 +1172,7 @@ def test_decorate_single_asset_response_with_people_keeps_top_level_asset_url():
 
 def test_decorate_single_asset_response_does_not_create_people_photo_links():
     """Item 59: nested person objects must never get /photos/{person-id} via asset context."""
-    from claw2immich.tooling import _decorate_response
+    from mcp4immich.tooling import _decorate_response
 
     response = {
         "id": "asset-main-2",

@@ -15,7 +15,7 @@ COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen
 
 COPY main.py ./
-COPY claw2immich ./claw2immich
+COPY mcp4immich ./mcp4immich
 COPY docs ./docs
 
 CMD ["uv", "run", "python", "main.py"]

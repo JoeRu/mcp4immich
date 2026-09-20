@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-claw2immich is a Python MCP (Model Context Protocol) server that exposes the Immich REST API. It uses FastMCP for server scaffolding and httpx for HTTP requests to the Immich API. The OpenAPI spec from Immich is the source of truth for API shape.
+mcp4immich is a Python MCP (Model Context Protocol) server that exposes the Immich REST API. It uses FastMCP for server scaffolding and httpx for HTTP requests to the Immich API. The OpenAPI spec from Immich is the source of truth for API shape.
 
 
 
@@ -19,7 +19,7 @@ claw2immich is a Python MCP (Model Context Protocol) server that exposes the Imm
 ## Architecture
 - Always check on https://github.com/modelcontextprotocol/python-sdk/blob/main/README.md
 for implementation details of MCP.
-- Entry point remains [main.py](main.py) but logic is split into the `claw2immich/` package; server setup lives in `mcp_app.py`
+- Entry point remains [main.py](main.py) but logic is split into the `mcp4immich/` package; server setup lives in `mcp_app.py`
 - MCP tools are defined as plain functions registered via `_register_tools()` based on runtime capability discovery
 - Config helpers in `config.py` read `IMMICH_BASE_URL`, `IMMICH_API_KEY`, and `IMMICH_API_TOKEN`
 - HTTP handling lives in `http_client.py` (`_request()`, `_probe()`)

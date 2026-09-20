@@ -113,7 +113,7 @@ wheels = [
 ]
 
 [[package]]
-name = "claw2immich"
+name = "mcp4immich"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

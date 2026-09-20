@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from claw2immich import openapi
+from mcp4immich import openapi
 
 
 class OpenApiVersionedSpecTests(unittest.TestCase):
@@ -15,7 +15,7 @@ class OpenApiVersionedSpecTests(unittest.TestCase):
 
     def test_fetch_openapi_spec_health_failure(self) -> None:
         with patch(
-            "claw2immich.openapi._probe",
+            "mcp4immich.openapi._probe",
             return_value={"ok": False, "status_code": 500, "detail": "down"},
         ):
             with self.assertRaises(ValueError) as exc:
@@ -24,9 +24,9 @@ class OpenApiVersionedSpecTests(unittest.TestCase):
         self.assertIn("health check failed", str(exc.exception))
 
     def test_fetch_openapi_spec_uses_versioned_url(self) -> None:
-        with patch("claw2immich.openapi._probe", return_value={"ok": True}):
+        with patch("mcp4immich.openapi._probe", return_value={"ok": True}):
             with patch(
-                "claw2immich.openapi._request",
+                "mcp4immich.openapi._request",
                 return_value={"major": 2, "minor": 5, "patch": 6},
             ):
                 response = MagicMock()
@@ -36,7 +36,7 @@ class OpenApiVersionedSpecTests(unittest.TestCase):
                 client.get.return_value = response
                 client.__enter__.return_value = client
                 client.__exit__.return_value = None
-                with patch("claw2immich.openapi.httpx.Client", return_value=client):
+                with patch("mcp4immich.openapi.httpx.Client", return_value=client):
                     openapi._fetch_openapi_spec.cache_clear()
                     result = openapi._fetch_openapi_spec()
 

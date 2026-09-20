@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "claw2immich"
+name = "mcp4immich"
 version = "0.1.0"
 description = "MCP Server for [immich-app](https://immich.app/)"
 readme = "README.md"
@@ -22,7 +22,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["claw2immich*"]
+include = ["mcp4immich*"]
 exclude = ["tests*", "helper*", "docs*", "ai-docs*", ".github*"]
 
 [tool.setuptools]

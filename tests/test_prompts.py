@@ -1,16 +1,16 @@
-"""Tests for claw2immich/prompts.py"""
+"""Tests for mcp4immich/prompts.py"""
 
 
 def test_prompts_module_available():
     """Test that prompts module can be imported."""
-    from claw2immich import prompts
+    from mcp4immich import prompts
 
     assert prompts is not None
 
 
 def test_register_prompts_and_resources():
     """Test that register_prompts_and_resources is callable."""
-    from claw2immich.prompts import register_prompts_and_resources
+    from mcp4immich.prompts import register_prompts_and_resources
 
     # Test that the function exists and is callable
     assert callable(register_prompts_and_resources)
@@ -18,7 +18,7 @@ def test_register_prompts_and_resources():
 
 def test_load_usage_guide():
     """Test that _load_usage_guide can be imported."""
-    from claw2immich.prompts import _load_usage_guide
+    from mcp4immich.prompts import _load_usage_guide
 
     # Test that the function exists
     assert callable(_load_usage_guide)
@@ -26,7 +26,7 @@ def test_load_usage_guide():
 
 def test_all_prompts_have_descriptions():
     """Test that every prompt registered via register_prompts_and_resources has a non-empty description."""
-    from claw2immich.prompts import register_prompts_and_resources
+    from mcp4immich.prompts import register_prompts_and_resources
 
     registered_prompts = []
 
@@ -54,7 +54,7 @@ def test_all_prompts_have_descriptions():
 
 def test_prompt_messages_use_explicit_tool_names():
     """Ensure key prompts provide concrete tool names and argument examples."""
-    from claw2immich.prompts import register_prompts_and_resources
+    from mcp4immich.prompts import register_prompts_and_resources
 
     registered_prompts = {}
 

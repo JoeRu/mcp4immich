@@ -1,7 +1,7 @@
 services: 
   mcp:
     build: .
-    image: claw2immich:local
+    image: mcp4immich:local
     environment:
       IMMICH_BASE_URL: ${IMMICH_BASE_URL:-http://host.docker.internal:2283}
       IMMICH_API_KEY: ${IMMICH_API_KEY:-}

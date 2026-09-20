@@ -28,7 +28,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run unit tests with coverage
-        run: uv run pytest tests/ -v --cov=claw2immich --cov-report=xml -m "not integration"
+        run: uv run pytest tests/ -v --cov=mcp4immich --cov-report=xml -m "not integration"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

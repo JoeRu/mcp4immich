@@ -28,10 +28,10 @@ import unittest
 
 import httpx
 
-from claw2immich.http_client import _probe, _request
-from claw2immich.http_client import ImmichAPIError
-from claw2immich.tooling import _decorate_response
-from claw2immich.config import get_external_domain
+from mcp4immich.http_client import _probe, _request
+from mcp4immich.http_client import ImmichAPIError
+from mcp4immich.tooling import _decorate_response
+from mcp4immich.config import get_external_domain
 
 # ---------------------------------------------------------------------------
 # Helpers

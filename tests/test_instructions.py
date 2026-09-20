@@ -1,6 +1,6 @@
 import unittest
 
-from claw2immich.constants import build_server_instructions
+from mcp4immich.constants import build_server_instructions
 
 
 class InstructionsTests(unittest.TestCase):
