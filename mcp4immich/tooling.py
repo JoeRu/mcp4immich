@@ -3,7 +3,9 @@ import inspect
 import base64
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from mcp_types import ToolAnnotations
 
@@ -1004,6 +1006,7 @@ def _register_openapi_tools(mcp) -> None:
             specs: list[dict[str, Any]],
             request_body: dict[str, Any] | None,
             ext_domain: str | None = None,
+            tool_risk: Risk = Risk.READ,
         ):
             # Determine if this response should be decorated with web URLs
             should_decorate, url_type = _should_decorate_response(method, path_template)
@@ -1147,11 +1150,39 @@ def _register_openapi_tools(mcp) -> None:
                     )
                 )
 
+            if tool_risk in (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN):
+                # I3: `confirm` must be a real, advertised input-schema field,
+                # not just an argument RiskPolicyMiddleware happens to accept.
+                # Before this, it worked only because pydantic silently drops
+                # extra keyword arguments not in a tool's signature -- a
+                # client that builds its call strictly from `inputSchema` (or
+                # strict function-calling with `additionalProperties: false`)
+                # could never satisfy the gate at all.
+                confirm_type = Annotated[
+                    bool,
+                    Field(
+                        description=(
+                            "Must be true to actually perform this destructive call."
+                        )
+                    ),
+                ]
+                annotations["confirm"] = confirm_type
+                signature_params.append(
+                    inspect.Parameter(
+                        "confirm",
+                        inspect.Parameter.KEYWORD_ONLY,
+                        default=False,
+                        annotation=confirm_type,
+                    )
+                )
+
             tool.__signature__ = inspect.Signature(signature_params)
             tool.__annotations__ = annotations
             return tool
 
-        tool_func = _make_tool(method, path, requires_auth, param_specs, body_spec, external_domain)
+        tool_func = _make_tool(
+            method, path, requires_auth, param_specs, body_spec, external_domain, tool_risk=risk
+        )
         TOOL_RISK[tool_name] = risk
         TOOL_OPERATION[tool_name] = (method, path)
         mcp.add_tool(

@@ -615,3 +615,55 @@ async def test_no_session_context_refuses_exactly_like_before_this_task():
 
     CallToolResult.model_validate(result)
     assert result["structuredContent"]["error"] == CONFIRMATION_REQUIRED
+
+
+# --- I3: `confirm` must be a real, discoverable input-schema field --------
+#
+# Before the fix, `confirm=true` worked only because pydantic ignores extra
+# keyword arguments -- it never appeared in `inputSchema`, so a client that
+# builds its call strictly from the advertised schema (or a strict
+# function-calling mode with `additionalProperties: false`) could never
+# satisfy the gate at all.
+
+
+def test_gated_tools_advertise_confirm_in_their_input_schema(monkeypatch):
+    from mcp.server.mcpserver import MCPServer
+
+    mcp = MCPServer("test", version="0.0.0")
+    tooling_mod = _register_real_tools(monkeypatch, mcp, destructive_enabled=True)
+
+    tools_by_name = {tool.name: tool for tool in mcp._tool_manager.list_tools()}
+    gated_names = [
+        name
+        for name, risk in tooling_mod.TOOL_RISK.items()
+        if risk in (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN) and name in tools_by_name
+    ]
+    assert gated_names, "expected at least one gated tool to be registered"
+
+    for name in gated_names:
+        schema = tools_by_name[name].parameters
+        assert "confirm" in schema["properties"], f"{name} is gated but has no confirm field"
+        confirm_prop = schema["properties"]["confirm"]
+        assert confirm_prop.get("default") is False
+        assert "confirm" not in schema.get("required", [])
+
+
+def test_read_tool_does_not_advertise_confirm(monkeypatch):
+    from mcp.server.mcpserver import MCPServer
+
+    mcp = MCPServer("test", version="0.0.0")
+    tooling_mod = _register_real_tools(monkeypatch, mcp, destructive_enabled=False)
+
+    tools_by_name = {tool.name: tool for tool in mcp._tool_manager.list_tools()}
+    read_names = [
+        name
+        for name, risk in tooling_mod.TOOL_RISK.items()
+        if risk is Risk.READ and name in tools_by_name
+    ]
+    assert read_names, "expected at least one READ tool to be registered"
+
+    for name in read_names:
+        schema = tools_by_name[name].parameters
+        assert "confirm" not in schema.get("properties", {}), (
+            f"{name} is a read tool but advertises confirm"
+        )
