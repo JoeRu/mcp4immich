@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-mcp4immich is a Python MCP (Model Context Protocol) server that exposes the Immich REST API. It uses FastMCP for server scaffolding and httpx for HTTP requests to the Immich API. The OpenAPI spec from Immich is the source of truth for API shape.
+mcp4immich is a Python MCP (Model Context Protocol) server that exposes the Immich REST API. It uses the MCP Python SDK 2.x (`mcp.server.mcpserver.MCPServer`) for server scaffolding and httpx for HTTP requests to the Immich API — not FastMCP; the SDK 2.x migration replaced it. The OpenAPI spec from Immich is the source of truth for API shape.
 
 
 
@@ -25,6 +25,11 @@ for implementation details of MCP.
 - HTTP handling lives in `http_client.py` (`_request()`, `_probe()`)
 - Capability probes live in `capabilities.py` (`_discover_capabilities()`, `_discover_write_capability()`)
 - OpenAPI spec is fetched and cached via `_fetch_openapi_spec()` in `openapi.py`
+- Risk classification (`READ`/`WRITE`/`DESTRUCTIVE`/`DESTRUCTIVE_ADMIN`) lives in `risk.py` (`classify()`) — the single source of truth every other safety mechanism derives from
+- Destructive-call enforcement lives in `policy.py` (`RiskPolicyMiddleware`) — refuses an unconfirmed `tools/call` for a gated tool before the handler ever runs
+- Elicitation-based confirmation (asking the human directly when the client supports it) lives in `confirm.py` (`ask_confirmation()`)
+- Immich endpoints that moved between major versions (e.g. `/api/server-config` → `/api/server/config` in 3.x) are shimmed in `compat.py`
+- OpenAPI spec resolution (disk cache → network → vendored fallback, so startup doesn't depend on reaching GitHub) lives in `specsource.py`
 
 ## Key Conventions
 

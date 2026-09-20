@@ -117,6 +117,7 @@ Environment variables:
 - `IMMICH_WRITE_PROBE_PATH` (default `/api/assets`)
 - `IMMICH_WRITE_PROBE_METHOD` (default `POST`)
 - `IMMICH_DOWNLOAD_ASSET_DELIVERY` (optional: `shared_link` (default), `inline_base64`, or `immich_link`)
+- `IMMICH_ALLOW_HTTP` (optional: `true`/`1` to suppress the warning logged when credentials are configured and `IMMICH_BASE_URL` uses plain `http://` — the request itself is unaffected either way; this only silences the log line)
 
 MCP server environment variables:
 - `MCP_TRANSPORT` (`stdio`, `sse`, or `streamable-http`; default `stdio`)

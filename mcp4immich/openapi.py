@@ -12,7 +12,6 @@ from .constants import (
     DEFAULT_TIMEOUT,
     HTTP_METHODS,
     MAX_DESCRIPTION_LEN,
-    OPENAPI_SPEC_URL,
 )
 from .http_client import _probe, _request
 from .specsource import resolve_spec
@@ -46,13 +45,6 @@ def _version_tag_from_payload(payload: dict[str, Any]) -> str:
     if not all(isinstance(value, int) for value in (major, minor, patch)):
         raise ValueError("Immich server version payload is missing major/minor/patch")
     return f"v{major}.{minor}.{patch}"
-
-
-def _versioned_spec_url(version_tag: str) -> str:
-    return (
-        "https://raw.githubusercontent.com/immich-app/immich/"
-        f"{version_tag}/open-api/immich-openapi-specs.json"
-    )
 
 
 def _server_major() -> int:

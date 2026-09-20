@@ -45,7 +45,9 @@ def get_external_domain() -> str | None:
     
     Fallback chain:
     1. IMMICH_EXTERNAL_DOMAIN env var (if set)
-    2. Discovered from GET /api/server-config externalDomain (if reachable)
+    2. Discovered from GET /api/server-config (Immich 2.x) or
+       GET /api/server/config (3.x) externalDomain (if reachable) --
+       see compat.py's version-dependent "server_config" endpoint
     3. IMMICH_BASE_URL (if available)
     4. None (if all fallbacks fail)
     
