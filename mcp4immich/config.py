@@ -62,8 +62,11 @@ def get_external_domain() -> str | None:
     
     # Try discovering from server config API
     try:
+        from .compat import endpoint
         from .http_client import _request
-        payload = _request("GET", "/api/server-config")
+        from .openapi import _server_major
+
+        payload = _request("GET", endpoint("server_config", _server_major()))
         if isinstance(payload, dict):
             server_domain = payload.get("externalDomain") or payload.get("external_domain")
             if isinstance(server_domain, str) and server_domain.strip():

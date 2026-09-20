@@ -11,7 +11,7 @@ class InstructionsTests(unittest.TestCase):
     def test_build_server_instructions_without_domain(self) -> None:
         instructions = build_server_instructions(None)
         self.assertIn("External domain for link building:", instructions)
-        self.assertIn("GET /api/server-config", instructions)
+        self.assertIn("call the server config endpoint", instructions)
 
     def test_instructions_contain_workflow_hints(self) -> None:
         instructions = build_server_instructions(None)

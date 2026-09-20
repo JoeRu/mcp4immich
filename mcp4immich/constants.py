@@ -15,7 +15,7 @@ def build_server_instructions(external_domain: str | None) -> str:
     else:
         domain_note = (
             "External domain for link building: set IMMICH_EXTERNAL_DOMAIN env var "
-            "or call GET /api/server-config and read externalDomain. "
+            "or call the server config endpoint and read externalDomain. "
         )
     return (
         "mcp4immich MCP server for Immich. "

@@ -45,6 +45,16 @@ def _versioned_spec_url(version_tag: str) -> str:
     )
 
 
+def _server_major() -> int:
+    """Immich major version, defaulting to the newest supported when unknown."""
+    try:
+        payload = _request("GET", "/api/server/version")
+        return int(payload["major"])
+    except Exception as exc:
+        logger.warning(f"Could not read Immich major version ({exc}); assuming 3")
+        return 3
+
+
 def _require_server_health() -> None:
     health = _probe("GET", "/api/health")
     if health.get("ok"):
