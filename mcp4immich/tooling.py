@@ -47,15 +47,25 @@ from .openapi import (
 from .risk import Risk, classify
 
 
-def annotations_for(risk: Risk, method: str) -> ToolAnnotations:
+def annotations_for(
+    risk: Risk, method: str, path: str | None = None
+) -> ToolAnnotations:
     """MCP hints for a tool. Advisory only — clients may ignore or strip them,
-    which is why the confirm gate, not these hints, is the enforcement point."""
+    which is why the confirm gate, not these hints, is the enforcement point.
+
+    Idempotency for a DELETE is decided by the path, not the risk class: a
+    by-id delete (final path segment is a `{param}`) is idempotent, a
+    collection delete is not. Without a path there is no way to tell the two
+    apart, so the conservative default is not idempotent.
+    """
     method = method.upper()
     destructive = risk in (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN)
     if risk is Risk.READ:
         idempotent = True
     elif destructive:
-        idempotent = method == "DELETE" and not _is_collection_delete(method, risk)
+        idempotent = (
+            method == "DELETE" and path is not None and not _is_collection_delete(path)
+        )
     else:
         idempotent = method == "PUT"
     return ToolAnnotations(
@@ -66,8 +76,12 @@ def annotations_for(risk: Risk, method: str) -> ToolAnnotations:
     )
 
 
-def _is_collection_delete(method: str, risk: Risk) -> bool:
-    return method == "DELETE" and risk is Risk.DESTRUCTIVE_ADMIN
+def _is_collection_delete(path: str) -> bool:
+    """A DELETE targets a collection when its final path segment is not a
+    path parameter — e.g. `/assets`, `/albums/{id}/assets` — as opposed to a
+    by-id delete like `/albums/{id}` or `/admin/users/{id}`."""
+    last_segment = path.rstrip("/").rsplit("/", 1)[-1]
+    return not (last_segment.startswith("{") and last_segment.endswith("}"))
 
 
 def _should_decorate_response(method: str, path: str) -> tuple[bool, str | None]:
@@ -1053,5 +1067,5 @@ def _register_openapi_tools(mcp) -> None:
             tool_func,
             name=tool_name,
             description=description,
-            annotations=annotations_for(risk, method),
+            annotations=annotations_for(risk, method, path),
         )
