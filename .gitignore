@@ -38,3 +38,4 @@ Thumbs.db
 .env**
 # Added by ggshield
 .cache_ggshield
+docker-compose.override.yml

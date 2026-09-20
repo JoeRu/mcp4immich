@@ -3,23 +3,58 @@
 [![Docker](https://github.com/JoeRu/mcp4immich/actions/workflows/build-docker.yml/badge.svg)](https://github.com/JoeRu/mcp4immich/actions/workflows/build-docker.yml)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/JoeRu/mcp4immich/ci.yml?branch=main)
 
-mcp4immich is a Python MCP (Model Context Protocol) server that exposes the Immich REST API as MCP tools. It generates one tool per OpenAPI operation — currently ~282 tools with a fully-permissioned key and `IMMICH_ENABLE_DESTRUCTIVE=true` — filtered down by the caller's actual Immich API permissions, and every one is risk-classified (read / write / destructive / destructive_admin) with MCP annotations attached. See **Safety** below for what that classification gates.
+mcp4immich is a Python MCP (Model Context Protocol) server that exposes the Immich REST API as MCP tools. It generates one tool per OpenAPI operation — 282 tools against Immich 3.2.1 with a fully-permissioned key and `IMMICH_ENABLE_DESTRUCTIVE=true` — filtered down by the caller's actual Immich API permissions, and every one is risk-classified (read / write / destructive / destructive_admin) with MCP annotations attached. See **Safety** below for what that classification gates.
+
+> **Renamed 2026-09-20**: this project was called `claw2immich`. The repository, the
+> Python package (`import mcp4immich`), the container image and the MCP server name all
+> changed together in 1.0.0. Older GHCR tags stay where they are (see Docker below).
 
 ## Status
-- Core MCP server and capability filtering are implemented.
-- Tool exposure is gated by Immich API permissions and by risk class (see Safety).
-- Integration tests cover tool listing and permission probes.
+
+**1.0.0** — the first release where the git tag, the published image and the version the
+server reports to clients all agree.
+
+- Runs on the official **MCP Python SDK 2.x**, speaking protocol revision `2026-07-28`
+  while still serving 2025-era clients from the same server.
+- Works against **Immich 2.x and 3.x**: the tool set is generated from the running
+  server's own OpenAPI spec, and the few endpoints that moved between majors are
+  resolved per version.
+- **Destructive operations are gated** — see Safety. Nothing that deletes reaches Immich
+  without an explicit `confirm=true` or an accepted elicitation.
+- **Starts without internet access**: the spec is resolved from a local cache, then the
+  network, then a copy vendored in the image.
+- 288 unit tests; integration tests run against a live Immich.
+
+## Requirements
+
+- Python 3.12+ (the project is developed with [uv](https://docs.astral.sh/uv/))
+- An Immich server (2.x or 3.x) and an API key
+- Or just Docker, if you use the published image
 
 ## Available tools
-- `ping_server`
-- `get_server_version`
-- `tool_access_report`
-- `write_capability_report`
-- `get_current_user` (only when permitted by API key/token)
-- `downloadAsset` (only when API key/token is configured; returns transport-safe `base64` payloads and supports optional `immich_link` delivery mode)
 
-All OpenAPI endpoints are exposed as tools named `immich_<operation>` or `immich_<method>_<path>`.
-Tools are filtered based on auth presence, admin-only markers, and write capability probes (default `POST /api/assets`).
+Almost every tool is **generated**, one per OpenAPI operation, named
+`immich_<operation>` or `immich_<method>_<path>`. Immich 3.2.1 exposes 276 operations,
+which together with the six hand-written tools below is 282 in total; how many a given
+client actually sees depends on what the API key may do and on the risk gates. A
+deployment with a fully-permissioned key and the default `IMMICH_ENABLE_DESTRUCTIVE`
+(off) registers **273 tools and hides 9**.
+
+Tools are filtered by auth presence, admin-only markers, write-capability probes
+(default `POST /api/assets`), the optional `IMMICH_PROFILE`, and risk class.
+Call `tool_access_report` to see exactly what the current configuration allows, what is
+blocked, and why.
+
+Six tools are hand-written rather than generated:
+
+| Tool | Purpose |
+|---|---|
+| `ping_server` | Is the Immich server reachable |
+| `get_server_version` | Immich's version |
+| `tool_access_report` | What this client may call, each tool's risk, and the reason for anything blocked |
+| `write_capability_report` | Result of the write-capability probe |
+| `get_current_user` | The identity behind the key (only when permitted) |
+| `downloadAsset` | Fetch an asset for clients that cannot use the Immich API key directly. **Creates a share link by default**, so it counts as a write — see Safety |
 
 OpenAPI tool descriptions include:
 - `params:` summary of required path/query/body fields
@@ -126,9 +161,17 @@ MCP server environment variables:
 - `MCP_MOUNT_PATH` (optional mount path for SSE transport)
 - `MCP_LOG_LEVEL` (default `INFO`)
 
-OpenAPI spec source:
-Version-matched spec (after `/api/health` and `/api/server/version`):
-https://raw.githubusercontent.com/immich-app/immich/v{VERSION}/open-api/immich-openapi-specs.json
+**OpenAPI spec source.** After `/api/health` and `/api/server/version`, the spec matching
+the running server's version is resolved in this order, and the chosen source is logged:
+
+1. the on-disk cache (`MCP4IMMICH_SPEC_CACHE`), if it holds that version;
+2. `https://raw.githubusercontent.com/immich-app/immich/v{VERSION}/open-api/immich-openapi-specs.json`,
+   which is then written to the cache;
+3. the copy vendored in the package (`mcp4immich/data/`), if the network is unreachable —
+   a warning names the vendored version when it differs from the server's.
+
+So a restart without internet access still yields a full tool set instead of a server
+that looks like an Immich with no endpoints.
 
 ## Access Profiles
 
@@ -259,9 +302,14 @@ When `IMMICH_PROFILE` is not set, tool filtering relies solely on capability pro
 - Always create a dedicated Immich API key with minimal permissions for each profile
 
 ## Run
+
+```sh
+uv run python main.py           # stdio (the default), for a local MCP client
+MCP_TRANSPORT=streamable-http MCP_PORT=8000 uv run python main.py   # HTTP at /mcp
+MCP_TRANSPORT=sse MCP_PORT=8000 uv run python main.py               # SSE at /sse
 ```
-python main.py
-```
+
+`python main.py` works too when the dependencies are already installed.
 
 ## Helper script: Smart Search CLI
 
@@ -278,9 +326,19 @@ Behavior:
 - Calls `POST /api/search/smart` and prints the JSON response directly to stdout.
 
 ## Tests
-Integration tests use the standard library `unittest` runner (pytest can also discover them).
 
-Blocked tool reasons now include HTTP status or network error details to help troubleshoot capability checks.
+```sh
+uv run pytest tests/ -q          # 288 unit tests, no Immich required
+```
+
+The unit suite covers the risk classifier against the vendored spec (every `DELETE` must
+classify as destructive), the confirmation middleware (a refusal must never dispatch),
+elicitation outcomes, spec resolution including the offline fallback, and that a
+destructive refusal is well-formed for both protocol eras.
+
+Integration tests additionally need a live Immich; they self-skip when the env files
+below are absent. Blocked tool reasons include HTTP status or network error details to
+help troubleshoot capability checks.
 
 Integration test setup:
 1. Ensure an Immich server is running and reachable.
@@ -294,8 +352,8 @@ MCP client tests start a background server using SSE. You can override defaults:
 - `MCP_LOG_LEVEL` (default `DEBUG` for test server logs)
 
 Run:
-```
-python -m unittest discover -s tests -v
+```sh
+uv run pytest tests/ -v
 ```
 
 Optional with pytest:
@@ -330,7 +388,7 @@ IMMICH_PASSWORD=<your-password>
 | `IMMICH_PASSWORD` | Account password for session login |
 
 `IMMICH_EXTERNAL_DOMAIN` may also be included to override the URL decoration base;
-if omitted it falls back to the `/api/server-config` discovery chain.
+if omitted it falls back to discovery via the server's config endpoint (the path differs between Immich 2.x and 3.x; the right one is chosen automatically).
 
 Run:
 ```sh
@@ -368,12 +426,11 @@ Note: the container runs `main.py`, which imports the `mcp4immich` package.
 If you change the package layout, rebuild the image so the updated package is
 copied into the container.
 
-Environment variables are passed through from your shell or `.env` file:
+Every variable from **Configuration** above is passed through from your shell or `.env`
+file — including `IMMICH_ENABLE_DESTRUCTIVE`, `IMMICH_PROFILE` and `MCP4IMMICH_SPEC_CACHE`.
+The ones whose defaults differ inside the image:
 - `IMMICH_BASE_URL` (default `http://host.docker.internal:2283`)
-- `IMMICH_API_KEY`
-- `IMMICH_API_TOKEN`
-- `IMMICH_WRITE_PROBE_PATH` (default `/api/assets`)
-- `IMMICH_WRITE_PROBE_METHOD` (default `POST`)
+- `MCP4IMMICH_SPEC_CACHE` (set to `/app/.cache/openapi` in the image)
 
 MCP server settings for Docker Compose:
 - `MCP_TRANSPORT` (default `sse` in compose; use `streamable-http` for HTTP)
