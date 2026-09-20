@@ -18,4 +18,6 @@ COPY main.py ./
 COPY mcp4immich ./mcp4immich
 COPY docs ./docs
 
+ENV MCP4IMMICH_SPEC_CACHE=/app/.cache/openapi
+
 CMD ["uv", "run", "python", "main.py"]

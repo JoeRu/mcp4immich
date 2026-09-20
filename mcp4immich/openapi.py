@@ -15,6 +15,7 @@ from .constants import (
     OPENAPI_SPEC_URL,
 )
 from .http_client import _probe, _request
+from .specsource import resolve_spec
 
 
 def _permission_is_read(permission: str | None) -> bool:
@@ -72,22 +73,16 @@ def _fetch_openapi_spec() -> dict[str, Any]:
 
     version_tag = _version_tag_from_payload(version_payload)
     logger.info(f"OpenAPI spec version: {version_tag}")
-    spec_url = _versioned_spec_url(version_tag)
 
-    with httpx.Client(timeout=DEFAULT_TIMEOUT) as client:
-        response = client.get(spec_url)
-    try:
+    def _fetch(url: str) -> dict[str, Any]:
+        with httpx.Client(timeout=DEFAULT_TIMEOUT) as client:
+            response = client.get(url)
         response.raise_for_status()
-        logger.info(f"Successfully fetched OpenAPI spec from {spec_url}")
-    except httpx.HTTPStatusError as exc:
-        logger.error(
-            f"OpenAPI spec not available for {version_tag}: HTTP {exc.response.status_code}"
-        )
-        raise ValueError(
-            f"OpenAPI spec not available for {version_tag}: "
-            f"HTTP {exc.response.status_code}"
-        ) from exc
-    return response.json()
+        return response.json()
+
+    spec, source = resolve_spec(version_tag, _fetch)
+    logger.info(f"OpenAPI spec source: {source} ({len(spec.get('paths', {}))} paths)")
+    return spec
 
 
 def _openapi_base_path(spec: dict[str, Any]) -> str:

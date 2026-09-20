@@ -27,6 +27,7 @@ exclude = ["tests*", "helper*", "docs*", "ai-docs*", ".github*"]
 
 [tool.setuptools]
 py-modules = ["main"]
+package-data = { "mcp4immich" = ["data/*.json"] }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
