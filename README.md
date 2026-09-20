@@ -50,8 +50,8 @@ the server will actually let a client do:
 |---|---|---|
 | `read` | `GET` endpoints | Registered and callable normally. |
 | `write` | non-destructive `POST`/`PUT`/`PATCH` | Registered and callable normally. |
-| `destructive` | `DELETE /albums/{id}`, `DELETE /assets/{id}` | Registered, but **refused unless the call carries `confirm=true`**, or the client accepts an elicitation prompt asking to confirm. |
-| `destructive_admin` | bulk/irreversible operations: `DELETE /assets`, `DELETE /people`, `POST /trash/empty`, `POST /duplicates/resolve`, every `DELETE /admin/*` | **Not registered at all** unless `IMMICH_ENABLE_DESTRUCTIVE=true` — these tools do not exist for a client to even see or call by default. |
+| `destructive` | `DELETE /albums/{id}`, `DELETE /assets/{id}`, and — fail-closed — every other mutating (`POST`/`PUT`/`PATCH`) call under `/admin/*` not listed below, e.g. `PUT /admin/config`, `POST /admin/maintenance`, `POST /admin/auth/unlink-all` | Registered, but **refused unless the call carries `confirm=true`**, or the client accepts an elicitation prompt asking to confirm. |
+| `destructive_admin` | bulk/irreversible operations: `DELETE /assets`, `DELETE /people`, `POST /trash/empty`, `POST /duplicates/resolve`, `POST /people/merge`, `POST /admin/database-backups/start-restore`, every `DELETE /admin/*` | **Not registered at all** unless `IMMICH_ENABLE_DESTRUCTIVE=true` — these tools do not exist for a client to even see or call by default. |
 
 **Confirmation (`confirm`)**: a `RiskPolicyMiddleware` inspects every
 `tools/call` before it reaches the tool's handler. For a `destructive` or

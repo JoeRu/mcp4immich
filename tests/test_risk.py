@@ -57,3 +57,50 @@ def test_membership_removals_are_not_admin_class():
         "/shared-links/{id}/assets",
     ):
         assert classify("DELETE", path) is Risk.DESTRUCTIVE
+
+
+# --- C2: non-DELETE admin mutations must not be plain WRITE ---------------
+#
+# Before the fix, the admin rule matched only DELETE under /admin/, so
+# POST /admin/database-backups/start-restore (overwrites the live database
+# from a backup) classified as ordinary WRITE and executed with no
+# confirmation. Fail closed: ANY mutating verb under /admin/ is at least
+# DESTRUCTIVE, and the two verified-highest-risk operations are
+# DESTRUCTIVE_ADMIN specifically.
+
+
+def test_start_restore_and_people_merge_are_destructive_admin():
+    """These two are irreversible and affect the whole library / all users,
+    so they must sit in the smallest, most-gated class, not merely
+    DESTRUCTIVE."""
+    assert classify("POST", "/admin/database-backups/start-restore") is Risk.DESTRUCTIVE_ADMIN
+    assert classify("POST", "/people/merge") is Risk.DESTRUCTIVE_ADMIN
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("POST", "/admin/auth/unlink-all"),
+        ("PUT", "/admin/config"),
+        ("POST", "/admin/maintenance"),
+        ("POST", "/admin/users"),
+        ("PUT", "/admin/users/{id}"),
+    ],
+)
+def test_other_admin_mutations_are_no_longer_plain_write(method, path):
+    assert classify(method, path) not in (Risk.READ, Risk.WRITE)
+
+
+def test_no_admin_mutation_in_the_spec_is_read_or_write():
+    """Spec-wide: any POST/PUT/PATCH/DELETE under /admin/ must be gated --
+    the admin rule targeted only DELETE before this fix, so e.g.
+    POST /admin/database-backups/start-restore slipped through as WRITE."""
+    unguarded = [
+        (method.upper(), path)
+        for path, ops in SPEC["paths"].items()
+        if path.startswith("/admin/")
+        for method in ops
+        if method.upper() in ("POST", "PUT", "PATCH", "DELETE")
+        and classify(method.upper(), path) not in (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN)
+    ]
+    assert unguarded == []
