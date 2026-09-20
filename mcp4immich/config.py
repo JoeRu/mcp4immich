@@ -117,6 +117,11 @@ def profile_allows_admin(profile: str | None) -> bool:
     return profile == "full_scope"
 
 
+def destructive_enabled() -> bool:
+    """Whether DESTRUCTIVE_ADMIN tools are registered at all."""
+    return os.getenv("IMMICH_ENABLE_DESTRUCTIVE", "").strip().lower() in ("1", "true", "yes")
+
+
 def get_download_asset_delivery_mode() -> str:
     """Return delivery mode for downloadAsset payloads."""
     mode = os.getenv("IMMICH_DOWNLOAD_ASSET_DELIVERY", "shared_link").strip().lower()

@@ -16,6 +16,7 @@ from .capabilities import (
 )
 from .config import (
     _get_config,
+    destructive_enabled,
     get_profile,
     get_external_domain,
     get_download_asset_delivery_mode,
@@ -35,6 +36,7 @@ from .openapi import (
     _openapi_base_path,
     _operation_admin_only,
     _operation_param_specs,
+    _param_arg_name,
     _operation_permission,
     _operation_request_body_spec,
     _operation_request_body_field_specs,
@@ -45,6 +47,65 @@ from .openapi import (
     _truncate_description,
 )
 from .risk import Risk, classify
+
+#: Risk class of every registered OpenAPI tool, keyed by tool name. Populated
+#: during registration in `_register_openapi_tools` and read by both
+#: `tool_access_report` (to explain the policy) and the `RiskPolicyMiddleware`
+#: (to enforce it) — the same dict object is handed to the middleware at
+#: server construction, so entries added here later are visible to it without
+#: any extra wiring.
+TOOL_RISK: dict[str, Risk] = {}
+
+#: (method, spec-path) of every registered OpenAPI tool, keyed by tool name.
+#: Used by the policy middleware to describe a refused call and to look up a
+#: sibling GET for the confirmation preview.
+TOOL_OPERATION: dict[str, tuple[str, str]] = {}
+
+#: Names of DESTRUCTIVE_ADMIN tools that were not registered because
+#: `IMMICH_ENABLE_DESTRUCTIVE` is not set. Recorded so `tool_access_report`
+#: can tell an agent the class exists and how to unlock it, rather than the
+#: tools simply being invisible with no explanation.
+HIDDEN_ADMIN_TOOLS: list[str] = []
+
+
+def _with_confirm_note(description: str, risk: Risk) -> str:
+    if risk in (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN):
+        return description + " DESTRUCTIVE: pass confirm=true to actually perform this call."
+    return description
+
+
+def _sibling_get(path: str, arguments: dict[str, Any]) -> dict[str, Any] | None:
+    """GET the resource a by-id DELETE would remove, for a confirmation preview.
+
+    Never mutates: this issues exactly one GET against the same path template
+    with its `{param}` segments filled in from `arguments` (using the same
+    `path_<name>` argument naming the generated DELETE tool itself uses).
+    Returns the identifying fields an agent would recognise, or None when the
+    response carries none of them. Any failure (missing id, 404, network
+    error) is left to the caller — `RiskPolicyMiddleware._preview` is the one
+    that swallows it so a broken preview never blocks the refusal.
+    """
+    path_params: dict[str, Any] = {}
+    for name in re.findall(r"{([^}]+)}", path):
+        arg_name = _param_arg_name("path", name)
+        if arg_name in arguments:
+            path_params[name] = arguments[arg_name]
+        elif isinstance(arguments.get("path_params"), dict) and name in arguments["path_params"]:
+            path_params[name] = arguments["path_params"][name]
+        elif name in arguments:
+            path_params[name] = arguments[name]
+
+    resolved_path = _apply_path_params(path, path_params)
+    base_path = _openapi_base_path(_fetch_openapi_spec())
+    response = _request("GET", f"{base_path}{resolved_path}", require_auth=True)
+    if not isinstance(response, dict):
+        return None
+    preview = {
+        key: response[key]
+        for key in ("id", "originalFileName", "name", "title")
+        if key in response
+    }
+    return preview or None
 
 
 def annotations_for(
@@ -626,7 +687,19 @@ def tool_access_report() -> dict[str, Any]:
     logger.info(
         f"Tool access report: {len(allowed_tools)} allowed, {len(blocked_tools)} blocked"
     )
-    return {"allowed_tools": allowed_tools, "blocked_tools": blocked_tools}
+    return {
+        "allowed_tools": allowed_tools,
+        "blocked_tools": blocked_tools,
+        "destructive_enabled": destructive_enabled(),
+        "risk": {name: str(risk) for name, risk in TOOL_RISK.items()},
+        "hidden_destructive_admin": [
+            {
+                "tool": name,
+                "reason": "Destructive-admin endpoint disabled (set IMMICH_ENABLE_DESTRUCTIVE=true)",
+            }
+            for name in HIDDEN_ADMIN_TOOLS
+        ],
+    }
 
 
 def write_capability_report() -> dict[str, str | bool]:
@@ -841,6 +914,7 @@ def _register_openapi_tools(mcp) -> None:
     operations = access["operations"]
     allowed = set(access["allowed_tools"])
     used_names: set[str] = set()
+    blocked_admin: list[str] = []
     external_domain = get_external_domain()
 
     for entry in operations:
@@ -852,6 +926,11 @@ def _register_openapi_tools(mcp) -> None:
         used_names.add(tool_name)
 
         if tool_name not in allowed:
+            continue
+
+        risk = classify(method, path)
+        if risk is Risk.DESTRUCTIVE_ADMIN and not destructive_enabled():
+            blocked_admin.append(tool_name)
             continue
 
         summary = operation.get("summary") or operation.get("description") or ""
@@ -1062,10 +1141,20 @@ def _register_openapi_tools(mcp) -> None:
             return tool
 
         tool_func = _make_tool(method, path, requires_auth, param_specs, body_spec, external_domain)
-        risk = classify(method, path)
+        TOOL_RISK[tool_name] = risk
+        TOOL_OPERATION[tool_name] = (method, path)
         mcp.add_tool(
             tool_func,
             name=tool_name,
-            description=description,
+            description=_with_confirm_note(description, risk),
             annotations=annotations_for(risk, method, path),
+        )
+
+    for tool_name in blocked_admin:
+        if tool_name not in HIDDEN_ADMIN_TOOLS:
+            HIDDEN_ADMIN_TOOLS.append(tool_name)
+    if blocked_admin:
+        logger.info(
+            f"{len(blocked_admin)} destructive-admin tools hidden "
+            "(set IMMICH_ENABLE_DESTRUCTIVE=true to expose them)"
         )

@@ -98,3 +98,124 @@ def test_every_registered_tool_carries_annotations():
     assert len(tools) > 200
     missing = [tool.name for tool in tools if tool.annotations is None]
     assert missing == []
+
+
+from mcp4immich.policy import CONFIRMATION_REQUIRED, RiskPolicyMiddleware
+
+
+class _Ctx:
+    def __init__(self, method, params):
+        self.method = method
+        self.params = params
+
+
+@pytest.mark.anyio
+async def test_destructive_call_without_confirm_is_refused_and_never_dispatched():
+    dispatched = []
+
+    async def call_next(ctx):
+        dispatched.append(ctx)
+        return {"unexpected": True}
+
+    mw = RiskPolicyMiddleware({"immich_deleteassets": Risk.DESTRUCTIVE_ADMIN})
+    result = await mw(_Ctx("tools/call", {"name": "immich_deleteassets", "arguments": {}}), call_next)
+
+    assert result["error"] == CONFIRMATION_REQUIRED
+    assert result["risk"] == "destructive_admin"
+    assert dispatched == [], "the handler must not run"
+
+
+@pytest.mark.anyio
+async def test_destructive_call_with_confirm_is_dispatched():
+    async def call_next(ctx):
+        return {"ok": True}
+
+    mw = RiskPolicyMiddleware({"immich_deletealbum": Risk.DESTRUCTIVE})
+    result = await mw(
+        _Ctx("tools/call", {"name": "immich_deletealbum", "arguments": {"confirm": True}}),
+        call_next,
+    )
+
+    assert result == {"ok": True}
+
+
+@pytest.mark.anyio
+async def test_refusal_includes_what_would_be_called_and_a_preview():
+    async def call_next(ctx):
+        raise AssertionError("must not dispatch")
+
+    mw = RiskPolicyMiddleware(
+        {"immich_deletealbum": Risk.DESTRUCTIVE},
+        operation_by_tool={"immich_deletealbum": ("DELETE", "/albums/{id}")},
+        sibling_get=lambda path, args: {"id": args["path_id"], "name": "Holiday 2024"},
+    )
+    result = await mw(
+        _Ctx("tools/call", {"name": "immich_deletealbum", "arguments": {"path_id": "a-1"}}),
+        call_next,
+    )
+
+    assert result["would_call"] == "DELETE /albums/{id}"
+    assert result["preview"]["name"] == "Holiday 2024"
+
+
+@pytest.mark.anyio
+async def test_failing_preview_still_refuses():
+    def boom(path, args):
+        raise RuntimeError("immich unreachable")
+
+    mw = RiskPolicyMiddleware(
+        {"immich_deletealbum": Risk.DESTRUCTIVE},
+        operation_by_tool={"immich_deletealbum": ("DELETE", "/albums/{id}")},
+        sibling_get=boom,
+    )
+    result = await mw(
+        _Ctx("tools/call", {"name": "immich_deletealbum", "arguments": {}}), lambda ctx: None
+    )
+
+    assert result["error"] == CONFIRMATION_REQUIRED
+    assert result["preview"] is None
+
+
+@pytest.mark.anyio
+async def test_read_tools_pass_straight_through():
+    async def call_next(ctx):
+        return {"ok": True}
+
+    mw = RiskPolicyMiddleware({"immich_getallalbums": Risk.READ})
+    result = await mw(
+        _Ctx("tools/call", {"name": "immich_getallalbums", "arguments": {}}), call_next
+    )
+
+    assert result == {"ok": True}
+
+
+@pytest.mark.anyio
+async def test_unknown_tool_is_not_gated():
+    async def call_next(ctx):
+        return {"ok": True}
+
+    mw = RiskPolicyMiddleware({})
+    result = await mw(_Ctx("tools/call", {"name": "something_else", "arguments": {}}), call_next)
+
+    assert result == {"ok": True}
+
+
+@pytest.mark.anyio
+async def test_non_tool_calls_pass_through():
+    async def call_next(ctx):
+        return {"ok": True}
+
+    mw = RiskPolicyMiddleware({"immich_deleteassets": Risk.DESTRUCTIVE_ADMIN})
+    result = await mw(_Ctx("resources/list", {}), call_next)
+
+    assert result == {"ok": True}
+
+
+def test_admin_class_is_hidden_unless_enabled(monkeypatch):
+    monkeypatch.delenv("IMMICH_ENABLE_DESTRUCTIVE", raising=False)
+    from mcp4immich.config import destructive_enabled
+
+    assert destructive_enabled() is False
+
+    monkeypatch.setenv("IMMICH_ENABLE_DESTRUCTIVE", "true")
+    assert destructive_enabled() is True

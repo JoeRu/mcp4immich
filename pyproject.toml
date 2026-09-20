@@ -18,6 +18,7 @@ dev = [
     "pytest>=9.0.2",
     "pytest-timeout>=2.4.0",
     "pytest-cov>=6.0.0",
+    "anyio>=4",
 ]
 
 [tool.setuptools.packages.find]
