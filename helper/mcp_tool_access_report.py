@@ -31,7 +31,7 @@ async def _main() -> int:
             await session.initialize()
             result = await session.call_tool("tool_access_report")
 
-    payload = result.structuredContent
+    payload = result.structured_content
     if payload is None and result.content:
         first = result.content[0]
         text = getattr(first, "text", None)
