@@ -1,5 +1,5 @@
 import logging
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
 from mcp.server.mcpserver import MCPServer
 
@@ -11,7 +11,18 @@ from .tooling import TOOL_OPERATION, TOOL_RISK, _register_tools, _sibling_get
 
 logger = logging.getLogger(__name__)
 
-__version__ = version("mcp4immich")
+# I7: `version("mcp4immich")` raises PackageNotFoundError when the package
+# is importable but not installed -- no dist-info to read. That is exactly
+# the README's Claude Desktop example (`python .../main.py` against a
+# checkout), which would otherwise crash at import time before the server
+# ever starts. This is the single source for the project's reported
+# version -- test_protocol_eras.py's test_server_reports_project_version_
+# not_sdk_version still asserts it matches importlib.metadata.version()
+# whenever that call succeeds.
+try:
+    __version__ = version("mcp4immich")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 
 def _resolve_external_domain() -> str | None:

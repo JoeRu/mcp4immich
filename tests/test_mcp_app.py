@@ -363,3 +363,39 @@ async def test_healthz_reports_unreachable_without_500_on_unexpected_exception()
 
     body = _json.loads(response.body)
     assert body["immich_reachable"] is False
+
+
+# --- I7: import-time version("mcp4immich") can raise -----------------------
+#
+# `PackageNotFoundError` is raised when the package is importable but not
+# installed (no dist-info to read) -- exactly the README's Claude Desktop
+# example, which runs `python .../main.py` against a checkout rather than an
+# installed package.
+
+
+def test_module_import_survives_missing_package_metadata():
+    """Reloading mcp4immich.mcp_app with `version()` raising
+    PackageNotFoundError must not raise -- it must fall back to a placeholder
+    string instead of crashing the whole import (and therefore the server)
+    at module load time."""
+    import importlib
+
+    from importlib.metadata import PackageNotFoundError
+
+    import mcp4immich.mcp_app as mcp_app_module
+
+    original_version = mcp_app_module.__version__
+    try:
+        with patch(
+            "importlib.metadata.version",
+            side_effect=PackageNotFoundError("mcp4immich"),
+        ):
+            importlib.reload(mcp_app_module)
+
+        assert mcp_app_module.__version__
+        assert isinstance(mcp_app_module.__version__, str)
+    finally:
+        # Restore the real version so later tests in this session (and
+        # anything relying on the un-reloaded module state) see it again.
+        importlib.reload(mcp_app_module)
+        assert mcp_app_module.__version__ == original_version
