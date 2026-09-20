@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.1 — 2026-09-20
+
+### Security
+- Refreshed every locked dependency, closing **30 Dependabot alerts** (1 critical,
+  9 high, 11 medium, 7 low). All were transitive — the direct dependencies are only
+  `httpx`, `mcp[cli]` and `anyio`. Notable moves: `anyio` 4.12.1 → 4.15.1
+  (CVE-2026-63374, critical), `cryptography` 46.0.5 → 50.0.1, `starlette` 0.52.1 → 1.6.0,
+  `pyjwt` 2.11 → 2.14, `python-multipart` 0.0.22 → 0.0.32, `uvicorn` 0.40 → 0.53.
+- The MCP SDK itself is unchanged at 2.2.0, so no protocol behaviour moved. Verified
+  after the upgrade: 288 unit tests, a live `streamable-http` session on protocol
+  2026-07-28 (273 tools, a destructive call still refused), and an `sse` session —
+  the last because Starlette crossed a major version.
+
+### Added
+- `.github/dependabot.yml`: weekly update checks for the `uv` ecosystem and for
+  GitHub Actions, so a gap like this surfaces as a PR instead of accumulating.
+- CI fails on known-vulnerable dependencies (`uv-secure` audit of the lockfile).
+
 ## 1.0.0 — 2026-09-20
 
 First release where the git tag, the published image and the version the

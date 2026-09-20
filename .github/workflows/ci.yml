@@ -43,3 +43,9 @@ jobs:
           verbose: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      # Every advisory this repo carried at 1.0.0 lived in uv.lock, under direct
+      # dependencies that looked perfectly current. Audit the resolved set, not
+      # the declared one.
+      - name: Audit locked dependencies for known vulnerabilities
+        run: uvx uv-secure@latest uv.lock
