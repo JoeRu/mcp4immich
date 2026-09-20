@@ -18,6 +18,7 @@ from typing import Any
 
 import anyio
 
+from .confirm import ask_confirmation
 from .risk import Risk
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,46 @@ logger = logging.getLogger(__name__)
 CONFIRMATION_REQUIRED = "CONFIRMATION_REQUIRED"
 
 GATED = (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN)
+
+
+class _SessionElicitor:
+    """Adapts this middleware's `ctx` to what `ask_confirmation` expects.
+
+    The middleware's `ctx` is a `ServerRequestContext` (verified against
+    mcp==2.2.0), which is NOT the tool-level `Context` the SDK facts describe
+    -- it has no `client_capabilities()`/`elicit()` of its own. Those live on
+    `ctx.session` (a `ServerSession`), shaped differently there:
+    `client_capabilities` is a *property*, not a callable, and
+    `session.elicit_form()` wants an already-rendered JSON schema and returns
+    the raw wire result rather than a validated `ElicitationResult`. This
+    adapts that shape to the duck type `ask_confirmation` was written
+    against, reusing the SDK's own `elicit_with_validation` (the same helper
+    the tool-level `Context.elicit()` calls) for schema rendering and
+    response validation -- so behaviour matches a tool handler's `ctx.elicit`
+    exactly, without faking anything.
+
+    A `ctx` with no `.session` (e.g. this module's own middleware tests,
+    which pass a bare `_Ctx(method, params)`) makes `client_capabilities()`
+    return `None`, which `ask_confirmation` treats as "no capability" -- the
+    same refusal as before this task, byte-identical.
+    """
+
+    def __init__(self, ctx: Any):
+        self._ctx = ctx
+
+    def client_capabilities(self) -> Any:
+        session = getattr(self._ctx, "session", None)
+        return None if session is None else session.client_capabilities
+
+    async def elicit(self, message: str, schema: Any) -> Any:
+        from mcp.server.elicitation import elicit_with_validation
+
+        return await elicit_with_validation(
+            session=self._ctx.session,
+            message=message,
+            schema=schema,
+            related_request_id=getattr(self._ctx, "request_id", None),
+        )
 
 
 class RiskPolicyMiddleware:
@@ -64,6 +105,9 @@ class RiskPolicyMiddleware:
         raw_arguments = params.get("arguments") if isinstance(params, Mapping) else None
         arguments = raw_arguments if isinstance(raw_arguments, Mapping) else {}
         if arguments.get("confirm") is True:
+            return await call_next(ctx)
+
+        if await ask_confirmation(_SessionElicitor(ctx), name, risk):
             return await call_next(ctx)
 
         logger.info(f"Refused unconfirmed destructive call to {name}")

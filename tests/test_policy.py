@@ -494,3 +494,124 @@ async def test_preview_runs_off_the_event_loop_thread():
     payload = result_box["result"]["structuredContent"]
     assert payload["preview"] == {"id": "x"}
     assert len(ticks) >= 3, "the event loop was blocked while the preview ran"
+
+
+# --- Elicitation wiring (Task 8) -------------------------------------------
+#
+# `ask_confirmation` itself is unit-tested in isolation against a duck-typed
+# `_Elicitor` in tests/test_confirm.py. These prove the *wiring*: that the
+# middleware's real `ctx` (a `ServerRequestContext`-shaped object here, with
+# a `.session`) actually reaches an elicitation-capable client through
+# `_SessionElicitor`, using the SDK's own `mcp_types.ClientCapabilities` and
+# `mcp.server.elicitation.elicit_with_validation` -- not a mock of this
+# module's own adapter code.
+
+from mcp_types import ClientCapabilities, ElicitationCapability
+
+from mcp4immich.confirm import ConfirmDestructive
+
+
+class _FakeSession:
+    """Stands in for `ServerSession`: only what `_SessionElicitor` touches."""
+
+    def __init__(self, *, elicitation_supported: bool, action: str, confirm: bool = True):
+        self.client_capabilities = ClientCapabilities(
+            elicitation=ElicitationCapability() if elicitation_supported else None
+        )
+        self._action = action
+        self._confirm = confirm
+
+    async def elicit_form(self, message, requested_schema, related_request_id=None):
+        from mcp_types import ElicitResult
+
+        content = {"confirm": self._confirm} if self._action == "accept" else None
+        return ElicitResult(action=self._action, content=content)
+
+
+class _SessionCtx:
+    def __init__(self, method, params, session):
+        self.method = method
+        self.params = params
+        self.session = session
+        self.request_id = "req-1"
+
+
+@pytest.mark.anyio
+async def test_destructive_call_confirmed_via_accepted_elicitation_is_dispatched():
+    async def call_next(ctx):
+        return {"ok": True}
+
+    mw = RiskPolicyMiddleware({"immich_deletealbum": Risk.DESTRUCTIVE})
+    ctx = _SessionCtx(
+        "tools/call",
+        {"name": "immich_deletealbum", "arguments": {}},
+        _FakeSession(elicitation_supported=True, action="accept"),
+    )
+
+    result = await mw(ctx, call_next)
+
+    assert result == {"ok": True}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("action", ["decline", "cancel"])
+async def test_destructive_call_declined_or_cancelled_via_elicitation_is_refused(action):
+    async def call_next(ctx):
+        raise AssertionError("must not dispatch")
+
+    mw = RiskPolicyMiddleware({"immich_deletealbum": Risk.DESTRUCTIVE})
+    ctx = _SessionCtx(
+        "tools/call",
+        {"name": "immich_deletealbum", "arguments": {}},
+        _FakeSession(elicitation_supported=True, action=action),
+    )
+
+    result = await mw(ctx, call_next)
+
+    CallToolResult.model_validate(result)
+    assert result["structuredContent"]["error"] == CONFIRMATION_REQUIRED
+
+
+@pytest.mark.anyio
+async def test_destructive_call_with_no_capability_is_refused_without_asking():
+    asked = []
+
+    class _WatchedSession(_FakeSession):
+        async def elicit_form(self, *args, **kwargs):
+            asked.append(True)
+            return await super().elicit_form(*args, **kwargs)
+
+    async def call_next(ctx):
+        raise AssertionError("must not dispatch")
+
+    mw = RiskPolicyMiddleware({"immich_deletealbum": Risk.DESTRUCTIVE})
+    ctx = _SessionCtx(
+        "tools/call",
+        {"name": "immich_deletealbum", "arguments": {}},
+        _WatchedSession(elicitation_supported=False, action="accept"),
+    )
+
+    result = await mw(ctx, call_next)
+
+    CallToolResult.model_validate(result)
+    assert result["structuredContent"]["error"] == CONFIRMATION_REQUIRED
+    assert asked == [], "a client without the capability must not be asked at all"
+
+
+@pytest.mark.anyio
+async def test_no_session_context_refuses_exactly_like_before_this_task():
+    """`_Ctx` (used throughout this file) has no `.session` at all -- the
+    shape every pre-Task-8 middleware test passes. Confirms the elicitation
+    path degrades to exactly the old refusal, not an exception.
+    """
+
+    async def call_next(ctx):
+        raise AssertionError("must not dispatch")
+
+    mw = RiskPolicyMiddleware({"immich_deletealbum": Risk.DESTRUCTIVE})
+    result = await mw(
+        _Ctx("tools/call", {"name": "immich_deletealbum", "arguments": {}}), call_next
+    )
+
+    CallToolResult.model_validate(result)
+    assert result["structuredContent"]["error"] == CONFIRMATION_REQUIRED
