@@ -241,3 +241,125 @@ def test_run_invalid_transport_raises_before_any_dispatch():
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+
+
+# --- I5: /healthz must not block the event loop, and must never 500 -------
+#
+# `_probe` is synchronous httpx with a 10s timeout, awaited inline in the
+# `/healthz` handler -- the only blocking call left on the loop. An
+# unreachable Immich stalls MCP request handling on every probe, and
+# `_probe` only catches httpx.RequestError/ValueError, so anything else
+# (e.g. a bug in _get_config, or httpx raising something else entirely)
+# turns the route into a 500 instead of a normal
+# `{"immich_reachable": false}` response.
+
+
+def _get_healthz_endpoint(mcp):
+    for route in mcp._custom_starlette_routes:
+        if route.path == "/healthz":
+            return route.endpoint
+    raise AssertionError("no /healthz route registered")
+
+
+@pytest.mark.anyio
+async def test_healthz_does_not_block_the_event_loop():
+    """A slow, blocking `_probe` must not stall concurrent request handling.
+
+    A weaker version of this test (just counting ticks by the end) passes
+    even against the broken, blocking implementation, because the task
+    group waits for every task to finish either way -- it doesn't prove
+    the ticks landed *during* the probe. This instead records wall-clock
+    timestamps and asserts at least one tick timestamp falls strictly
+    inside the probe's [start, end) window, i.e. the ticker genuinely made
+    progress while the blocking call was in flight.
+    """
+    import time
+
+    import anyio
+
+    from mcp4immich.mcp_app import create_mcp
+
+    mcp = create_mcp()
+    healthz = _get_healthz_endpoint(mcp)
+
+    window: dict[str, float] = {}
+
+    def slow_probe(*args, **kwargs):
+        window["start"] = time.monotonic()
+        time.sleep(0.2)
+        window["end"] = time.monotonic()
+        return {"ok": True}
+
+    tick_times: list[float] = []
+
+    async def ticker():
+        for _ in range(4):
+            await anyio.sleep(0.05)
+            tick_times.append(time.monotonic())
+
+    result_box: dict = {}
+
+    async def call_healthz():
+        with patch("mcp4immich.http_client._probe", side_effect=slow_probe):
+            result_box["response"] = await healthz(None)
+
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(ticker)
+        tg.start_soon(call_healthz)
+
+    overlapping = [t for t in tick_times if window["start"] < t < window["end"]]
+    assert overlapping, (
+        "no ticker tick landed while /healthz's probe was in flight -- "
+        "the event loop was blocked"
+    )
+
+    import json as _json
+
+    body = _json.loads(result_box["response"].body)
+    assert body["immich_reachable"] is True
+
+
+@pytest.mark.anyio
+async def test_healthz_reports_unreachable_without_500_on_request_error():
+    import httpx
+
+    from mcp4immich.mcp_app import create_mcp
+
+    mcp = create_mcp()
+    healthz = _get_healthz_endpoint(mcp)
+
+    with patch(
+        "mcp4immich.http_client._probe",
+        side_effect=httpx.ConnectError("connection refused"),
+    ):
+        response = await healthz(None)
+
+    assert response.status_code == 200
+    import json as _json
+
+    body = _json.loads(response.body)
+    assert body["immich_reachable"] is False
+
+
+@pytest.mark.anyio
+async def test_healthz_reports_unreachable_without_500_on_unexpected_exception():
+    """`_probe` itself already catches httpx.RequestError/ValueError, but the
+    /healthz route must not 500 even if something else escapes it (a
+    programming error in config resolution, e.g.) -- the route's whole job
+    is to answer honestly, not to propagate."""
+    from mcp4immich.mcp_app import create_mcp
+
+    mcp = create_mcp()
+    healthz = _get_healthz_endpoint(mcp)
+
+    with patch(
+        "mcp4immich.http_client._probe",
+        side_effect=RuntimeError("unexpected"),
+    ):
+        response = await healthz(None)
+
+    assert response.status_code == 200
+    import json as _json
+
+    body = _json.loads(response.body)
+    assert body["immich_reachable"] is False

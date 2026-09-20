@@ -42,12 +42,27 @@ def create_mcp() -> MCPServer:
 
     @server.custom_route("/healthz", methods=["GET"])
     async def healthz(request):  # noqa: ANN001 - starlette request
+        import anyio
         from starlette.responses import JSONResponse
 
         from .http_client import _probe
         from .openapi import _get_last_spec_source
 
-        reachable = bool(_probe("GET", "/api/server/ping").get("ok"))
+        # I5: `_probe` is synchronous httpx with a 10s timeout. Awaited
+        # inline (the old code), it was the only blocking call left on the
+        # loop -- an unreachable Immich stalled MCP request handling on
+        # every probe. Offload to a worker thread, same pattern as
+        # `policy.py`'s preview GET (`anyio.to_thread.run_sync`).
+        #
+        # `_probe` already catches `httpx.RequestError`/`ValueError`, but
+        # this route's whole job is to answer honestly, not to propagate --
+        # any other exception (a bug elsewhere, e.g. in config resolution)
+        # must still produce `immich_reachable: false`, not a 500.
+        try:
+            probe_result = await anyio.to_thread.run_sync(_probe, "GET", "/api/server/ping")
+            reachable = bool(probe_result.get("ok"))
+        except Exception:
+            reachable = False
         return JSONResponse(
             {
                 "status": "ok",
