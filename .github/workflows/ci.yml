@@ -39,7 +39,7 @@ jobs:
             echo "mcp dependency must keep an upper bound (see CHANGELOG 1.0.0)"; exit 1; }
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
