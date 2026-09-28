@@ -486,12 +486,13 @@ wheels = [
 
 [[package]]
 name = "mcp4immich"
-version = "1.0.0"
+version = "1.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
     { name = "mcp", extra = ["cli"] },
+    { name = "pyjwt", extra = ["crypto"] },
 ]
 
 [package.dev-dependencies]
@@ -506,6 +507,7 @@ requires-dist = [
     { name = "anyio", specifier = ">=4" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mcp", extras = ["cli"], specifier = ">=2.2,<3" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
 ]
 
 [package.metadata.requires-dev]
