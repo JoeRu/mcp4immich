@@ -10,7 +10,9 @@ from mcp.server.mcpserver import MCPServer
 import mcp4immich.tooling as tooling_mod
 from mcp4immich.config import get_excluded_tools
 
-SPEC = json.loads(Path("mcp4immich/data/immich-openapi-3.json").read_text())
+SPEC = json.loads(
+    (Path(__file__).resolve().parents[1] / "mcp4immich" / "data" / "immich-openapi-3.json").read_text()
+)
 
 
 @pytest.fixture(autouse=True)
@@ -86,6 +88,18 @@ def test_exclude_tools_warns_on_unknown_name(monkeypatch, caplog):
         _register(monkeypatch, "immich_createsharedlnk")
     assert "immich_createsharedlnk" in caplog.text
     assert "unknown" in caplog.text.lower()
+
+
+def test_exclude_tools_warns_on_hand_written_tool_name(monkeypatch, caplog):
+    # Review Focus (c): downloadAsset is hand-written, not an OpenAPI tool,
+    # so it can never be excluded. The warning must say so rather than
+    # calling a real (if non-excludable) tool name "unknown".
+    with caplog.at_level(logging.WARNING, logger="mcp4immich.tooling"):
+        mcp = _register(monkeypatch, "downloadAsset")
+    assert "downloadAsset" in caplog.text
+    assert "unknown" in caplog.text.lower()
+    assert "non-excludable" in caplog.text.lower()
+    assert "downloadAsset" in _names(mcp)
 
 
 def test_tool_access_report_lists_and_omits_excluded(monkeypatch):

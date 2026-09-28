@@ -119,6 +119,11 @@ class JwtTokenVerifier:
                 algorithms=[alg],
                 audience=self._config.audience,
                 issuer=self._config.issuer,
+                # The MCP SDK's BearerAuthBackend independently rejects tokens
+                # whose expires_at is in the past (it checks this itself,
+                # before/around this decode), so in practice this leeway only
+                # widens the window for nbf/iat over HTTP -- it does not
+                # extend how long an expired token stays usable.
                 leeway=self._config.leeway_seconds,
                 options={"require": ["exp", "iss", "aud", "sub"]},
             )

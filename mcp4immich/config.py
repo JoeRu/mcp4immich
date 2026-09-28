@@ -157,9 +157,9 @@ def get_auth_settings() -> dict[str, Any] | None:
     all be present, so a half-written config can never start an unauthenticated
     server that the operator believes is protected.
     """
-    values = {name: os.getenv(name, "").strip() for name in AUTH_ENV_VARS}
-    if not any(values.values()):
+    if not any(name in os.environ for name in AUTH_ENV_VARS):
         return None
+    values = {name: os.getenv(name, "").strip() for name in AUTH_ENV_VARS}
     missing = [name for name in _AUTH_REQUIRED if not values[name]]
     if missing:
         raise ValueError(
@@ -169,11 +169,14 @@ def get_auth_settings() -> dict[str, Any] | None:
         if not values[name].startswith("https://"):
             raise ValueError(f"{name} must start with https://")
     raw_algorithms = values["MCP_AUTH_ALGORITHMS"]
-    algorithms = (
-        tuple(a.strip() for a in raw_algorithms.split(",") if a.strip())
-        if raw_algorithms
-        else _DEFAULT_AUTH_ALGORITHMS
-    )
+    if raw_algorithms:
+        algorithms = tuple(a.strip() for a in raw_algorithms.split(",") if a.strip())
+        if not algorithms:
+            raise ValueError(
+                "MCP_AUTH_ALGORITHMS is set but contains no usable algorithm names"
+            )
+    else:
+        algorithms = _DEFAULT_AUTH_ALGORITHMS
     refused = [a for a in algorithms if a.lower() == "none" or a.upper().startswith("HS")]
     if refused:
         raise ValueError(f"MCP_AUTH_ALGORITHMS: {', '.join(refused)} not allowed")

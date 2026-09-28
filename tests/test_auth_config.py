@@ -77,3 +77,29 @@ def test_symmetric_and_none_algorithms_are_refused(monkeypatch, alg):
     monkeypatch.setenv("MCP_AUTH_ALGORITHMS", f"RS256,{alg}")
     with pytest.raises(ValueError, match="not allowed"):
         get_auth_settings()
+
+
+def test_all_vars_present_but_empty_fails_closed(monkeypatch):
+    # Review Focus (a): every MCP_AUTH_* var present (e.g. from an
+    # unresolved compose interpolation) but blank must NOT be treated as
+    # "auth off" -- that would start the server unauthenticated.
+    for name in AUTH_ENV_VARS:
+        monkeypatch.setenv(name, "")
+    with pytest.raises(ValueError, match="partially configured"):
+        get_auth_settings()
+
+
+def test_only_issuer_present_and_blank_fails_closed(monkeypatch):
+    monkeypatch.setenv("MCP_AUTH_ISSUER", "  ")
+    with pytest.raises(ValueError):
+        get_auth_settings()
+
+
+@pytest.mark.parametrize("raw", [",", " , "])
+def test_algorithms_parsing_to_empty_list_is_rejected(monkeypatch, raw):
+    # Review Focus (b): MCP_AUTH_ALGORITHMS set but containing no usable
+    # algorithm names must not silently fall back to the default list.
+    _set_required(monkeypatch)
+    monkeypatch.setenv("MCP_AUTH_ALGORITHMS", raw)
+    with pytest.raises(ValueError, match="MCP_AUTH_ALGORITHMS"):
+        get_auth_settings()

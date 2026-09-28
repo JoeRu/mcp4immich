@@ -1264,7 +1264,8 @@ def _register_openapi_tools(mcp) -> None:
     unknown = sorted(excluded - used_names)
     if unknown:
         logger.warning(
-            f"MCP_EXCLUDE_TOOLS names unknown tools (typo?): {', '.join(unknown)}"
+            "MCP_EXCLUDE_TOOLS names unknown or non-excludable tools "
+            f"(only OpenAPI tools can be excluded; typo?): {', '.join(unknown)}"
         )
     if EXCLUDED_TOOLS:
         logger.info(f"{len(EXCLUDED_TOOLS)} tools excluded by MCP_EXCLUDE_TOOLS")
