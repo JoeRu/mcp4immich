@@ -19,6 +19,7 @@ from .capabilities import (
 from .config import (
     _get_config,
     destructive_enabled,
+    get_excluded_tools,
     get_profile,
     get_external_domain,
     get_download_asset_delivery_mode,
@@ -68,6 +69,11 @@ TOOL_OPERATION: dict[str, tuple[str, str]] = {}
 #: can tell an agent the class exists and how to unlock it, rather than the
 #: tools simply being invisible with no explanation.
 HIDDEN_ADMIN_TOOLS: list[str] = []
+
+#: Names of OpenAPI tools skipped because they are listed in MCP_EXCLUDE_TOOLS.
+#: A deployment choice, not a permission: reported so an agent is told why a
+#: tool is missing instead of seeing it vanish.
+EXCLUDED_TOOLS: list[str] = []
 
 
 def _with_confirm_note(description: str, risk: Risk) -> str:
@@ -690,8 +696,11 @@ def tool_access_report() -> dict[str, Any]:
     # a name would appear in both `allowed_tools` and
     # `hidden_destructive_admin`, and an agent reading only the former would
     # try to call a tool that was never registered.
+    excluded = set(EXCLUDED_TOOLS)
     allowed_tools.extend(
-        name for name in openapi_access["allowed_tools"] if name not in hidden_admin
+        name
+        for name in openapi_access["allowed_tools"]
+        if name not in hidden_admin and name not in excluded
     )
     blocked_tools.extend(openapi_access["blocked_tools"])
     logger.info(
@@ -701,6 +710,7 @@ def tool_access_report() -> dict[str, Any]:
         "allowed_tools": allowed_tools,
         "blocked_tools": blocked_tools,
         "destructive_enabled": destructive_enabled(),
+        "excluded_tools": list(EXCLUDED_TOOLS),
         "risk": {name: str(risk) for name, risk in TOOL_RISK.items()},
         "hidden_destructive_admin": [
             {
@@ -964,6 +974,7 @@ def _register_openapi_tools(mcp) -> None:
     allowed = set(access["allowed_tools"])
     used_names: set[str] = set()
     blocked_admin: list[str] = []
+    excluded = get_excluded_tools()
     external_domain = get_external_domain()
 
     for entry in operations:
@@ -973,6 +984,11 @@ def _register_openapi_tools(mcp) -> None:
         tool_name = _tool_name_for_operation(method, path, operation)
         tool_name = _deduplicate_name(tool_name, used_names)
         used_names.add(tool_name)
+
+        if tool_name in excluded:
+            if tool_name not in EXCLUDED_TOOLS:
+                EXCLUDED_TOOLS.append(tool_name)
+            continue
 
         if tool_name not in allowed:
             continue
@@ -1236,3 +1252,10 @@ def _register_openapi_tools(mcp) -> None:
             f"{len(blocked_admin)} destructive-admin tools hidden "
             "(set IMMICH_ENABLE_DESTRUCTIVE=true to expose them)"
         )
+    unknown = sorted(excluded - used_names)
+    if unknown:
+        logger.warning(
+            f"MCP_EXCLUDE_TOOLS names unknown tools (typo?): {', '.join(unknown)}"
+        )
+    if EXCLUDED_TOOLS:
+        logger.info(f"{len(EXCLUDED_TOOLS)} tools excluded by MCP_EXCLUDE_TOOLS")

@@ -184,3 +184,9 @@ def get_auth_settings() -> dict[str, Any] | None:
         "allowed_sub": values["MCP_AUTH_ALLOWED_SUB"] or None,
         "algorithms": algorithms,
     }
+
+
+def get_excluded_tools() -> frozenset[str]:
+    """OpenAPI tool names that must not be registered (MCP_EXCLUDE_TOOLS, comma-separated)."""
+    raw = os.getenv("MCP_EXCLUDE_TOOLS", "")
+    return frozenset(name.strip() for name in raw.split(",") if name.strip())
