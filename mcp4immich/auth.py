@@ -115,7 +115,7 @@ class JwtTokenVerifier:
         try:
             claims = jwt.decode(
                 token,
-                key=key.key,
+                key=key,
                 algorithms=[alg],
                 audience=self._config.audience,
                 issuer=self._config.issuer,
@@ -124,6 +124,14 @@ class JwtTokenVerifier:
             )
         except jwt.PyJWTError as exc:
             logger.info(f"Rejected bearer token: {type(exc).__name__}")
+            return None
+        except Exception as exc:
+            # Defense in depth: a header alg/JWK key-type mismatch (e.g. an
+            # ES256 header paired with an RSA kid) raises TypeError deep
+            # inside PyJWT, not PyJWTError. Every failure path here must
+            # return None, never raise, or an attacker gets a 500 instead
+            # of a 401.
+            logger.warning(f"Rejected bearer token: unexpected error during decode ({type(exc).__name__})")
             return None
         subject = str(claims["sub"])
         if self._config.allowed_sub is not None and subject != self._config.allowed_sub:

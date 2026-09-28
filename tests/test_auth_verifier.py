@@ -4,7 +4,7 @@ import time
 import anyio
 import jwt
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
 from mcp4immich.auth import AuthConfig, JwksCache, JwtTokenVerifier, build_verifier
 from auth_fixtures import FakeIssuer
@@ -94,6 +94,22 @@ def test_rejects_bad_signature(issuer, verifier):
 
 def test_rejects_alg_none(issuer, verifier):
     assert verifier.verify_sync(issuer.mint_unsigned()) is None
+
+
+def test_rejects_alg_key_type_mismatch_without_raising(issuer, verifier):
+    # Review Focus 3: ES256 header + the RSA kid must reject cleanly, not
+    # raise TypeError out of jwt.decode (which would surface as a 500).
+    ec_key = ec.generate_private_key(ec.SECP256R1())
+    token = jwt.encode(issuer.claims(), ec_key, algorithm="ES256", headers={"kid": issuer.kid})
+    assert verifier.verify_sync(token) is None
+
+
+def test_unexpected_decode_error_is_caught_and_rejects(issuer, verifier, monkeypatch):
+    def boom(*args, **kwargs):
+        raise TypeError("Expecting a PEM-formatted key.")
+
+    monkeypatch.setattr(jwt, "decode", boom)
+    assert verifier.verify_sync(issuer.mint()) is None
 
 
 def test_rejects_hs256_token(issuer, verifier):
