@@ -3,7 +3,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from mcp.server.mcpserver import MCPServer
 
-from .config import get_mcp_settings, get_transport_settings, get_external_domain
+from .config import get_auth_settings, get_mcp_settings, get_transport_settings, get_external_domain
 from .constants import build_server_instructions
 from .policy import RiskPolicyMiddleware
 from .prompts import register_prompts_and_resources
@@ -30,6 +30,31 @@ def _resolve_external_domain() -> str | None:
     return get_external_domain()
 
 
+def _auth_kwargs() -> dict[str, object]:
+    """MCPServer auth arguments, or {} when MCP_AUTH_* is not configured.
+
+    Builds the verifier eagerly: discovery + JWKS are fetched here, so an
+    unreachable issuer stops the process instead of starting it unprotected.
+    """
+    settings = get_auth_settings()
+    if settings is None:
+        return {}
+    from mcp.server.auth.settings import AuthSettings
+
+    from .auth import AuthConfig, build_verifier
+
+    return {
+        "auth": AuthSettings(
+            issuer_url=settings["issuer"],
+            resource_server_url=settings["resource_url"],
+            # The verifier checks `aud` itself (MCP_AUTH_AUDIENCE); Pocket-ID
+            # does not bind tokens to an RFC 8707 resource indicator.
+            validate_token_resource=False,
+        ),
+        "token_verifier": build_verifier(AuthConfig(**settings)),
+    }
+
+
 def create_mcp() -> MCPServer:
     logger.info("Creating MCP server")
     settings = get_mcp_settings()
@@ -49,6 +74,7 @@ def create_mcp() -> MCPServer:
         log_level=settings["log_level"],
         instructions=instructions,
         middleware=middleware,
+        **_auth_kwargs(),
     )
 
     @server.custom_route("/healthz", methods=["GET"])
@@ -96,6 +122,9 @@ def run() -> None:
     logger.info(f"Using transport: {transport}")
     if transport not in {"stdio", "sse", "streamable-http"}:
         raise ValueError("MCP_TRANSPORT must be stdio, sse, or streamable-http")
+
+    if transport == "stdio" and get_auth_settings() is not None:
+        raise ValueError("MCP_AUTH_* is set but MCP_TRANSPORT is stdio; auth needs an HTTP transport")
 
     if transport == "stdio":
         # stdio has no network binding; host/port/mount_path do not apply.
