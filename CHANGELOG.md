@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0 — 2026-09-28
+
+### Added
+- Opt-in OAuth resource-server mode (`MCP_AUTH_*`): JWT verification against an
+  OIDC issuer's JWKS (rate-limited refetch on unknown `kid`), fail-closed
+  configuration — any `MCP_AUTH_*` variable present, even empty, requires a
+  complete config — and RFC 9728 protected-resource metadata.
+- `MCP_EXCLUDE_TOOLS` to leave named OpenAPI tools unregistered; reported in
+  `tool_access_report` as `excluded_tools`.
+- `downloadAsset` shared links carry the description `mcp4immich-auto`.
+- Explicit dependency on `pyjwt[crypto]`.
+
 ## 1.0.1 — 2026-09-20
 
 ### Security

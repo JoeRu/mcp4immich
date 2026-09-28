@@ -160,6 +160,29 @@ MCP server environment variables:
 - `MCP_PORT` (default `8000`)
 - `MCP_MOUNT_PATH` (optional mount path for SSE transport)
 - `MCP_LOG_LEVEL` (default `INFO`)
+- `MCP_AUTH_ISSUER` (optional: OIDC issuer URL, `https://` only. Setting **any** `MCP_AUTH_*` variable — even to an empty value — turns on OAuth for `/mcp`; the server then refuses to start unless issuer, audience and resource URL are all set and the issuer's discovery document and JWKS are reachable)
+- `MCP_AUTH_AUDIENCE` (exact value that must appear in the token's `aud`)
+- `MCP_AUTH_RESOURCE_URL` (public URL of the MCP endpoint, e.g. `https://mcp.example.com/mcp`; the protected-resource metadata is served at `/.well-known/oauth-protected-resource/mcp`)
+- `MCP_AUTH_ALLOWED_SUB` (optional: only tokens with this `sub` are accepted)
+- `MCP_AUTH_ALGORITHMS` (optional: accepted JWT algorithms, default `RS256,ES256,EdDSA`; `none` and `HS*` are refused)
+- `MCP_EXCLUDE_TOOLS` (optional: comma-separated OpenAPI tool names not to register; unknown or non-excludable names are logged as a warning)
+
+### Exposing publicly with OAuth
+
+mcp4immich can act as an OAuth 2.1 resource server, which is what claude.ai
+custom connectors need. It never issues tokens: point it at an OIDC provider
+(tested with Pocket-ID) and it verifies each bearer token's signature (JWKS
+from the issuer's discovery document), `iss`, `aud`, `exp`/`nbf` and
+optionally `sub`. Anything else gets a 401 with a `WWW-Authenticate` header
+naming the protected-resource metadata. `/healthz` stays unauthenticated.
+
+Auth protects the endpoint; it does not limit what an authenticated caller can
+do. Give a public instance its own Immich API key with only the permissions it
+needs, since that key is the real limit.
+
+Shared links created by `downloadAsset` carry the description
+`mcp4immich-auto`. Immich does not delete expired links, so run a periodic
+cleanup that deletes expired links with that description.
 
 **OpenAPI spec source.** After `/api/health` and `/api/server/version`, the spec matching
 the running server's version is resolved in this order, and the chosen source is logged:

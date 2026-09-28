@@ -14,6 +14,7 @@ for implementation details of MCP.
 - Elicitation-based confirmation (asking the human directly when the client supports it) lives in `confirm.py` (`ask_confirmation()`)
 - Immich endpoints that moved between major versions (e.g. `/api/server-config` → `/api/server/config` in 3.x) are shimmed in `compat.py`
 - OpenAPI spec resolution (disk cache → network → vendored fallback, so startup doesn't depend on reaching GitHub) lives in `specsource.py`
+- Inbound OAuth (opt-in via `MCP_AUTH_*`) lives in `auth.py` (`build_verifier()`, `JwtTokenVerifier`); settings are parsed fail-closed in `config.get_auth_settings()` and wired into `MCPServer` by `mcp_app._auth_kwargs()`. The server is a resource server only: it never issues tokens
 
 ## Key Conventions
 
