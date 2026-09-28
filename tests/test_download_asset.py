@@ -342,3 +342,29 @@ def test_downloadasset_registration_classifies_as_read_for_inline_base64(monkeyp
     assert tooling_mod.TOOL_RISK["downloadAsset"] is Risk.READ
     tool = next(t for t in mcp._tool_manager.list_tools() if t.name == "downloadAsset")
     assert tool.annotations.read_only_hint is True
+
+
+def test_shared_link_payload_carries_cleanup_marker() -> None:
+    """Every shared link downloadAsset creates is marked, so the cleanup job
+    can delete it after expiry without touching links shared by hand."""
+    from mcp4immich.tooling import SHARED_LINK_MARKER
+
+    assert SHARED_LINK_MARKER == "mcp4immich-auto"
+    calls = []
+
+    def fake_request(method, path, json_body=None, **kwargs):
+        calls.append((method, path, json_body))
+        return {"token": "tok", "expiresAt": "2026-02-19T13:00:00Z"}
+
+    with patch(
+        "mcp4immich.tooling.get_download_asset_delivery_mode",
+        return_value="shared_link",
+    ), patch(
+        "mcp4immich.tooling.get_external_domain",
+        return_value="https://photos.mydomain.com",
+    ), patch("mcp4immich.tooling._request", side_effect=fake_request):
+        download_asset("asset-marked")
+
+    posts = [body for method, _, body in calls if method == "POST"]
+    assert posts, "expected a shared-link POST"
+    assert all(body["description"] == "mcp4immich-auto" for body in posts)

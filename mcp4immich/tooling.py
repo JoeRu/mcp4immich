@@ -75,6 +75,11 @@ HIDDEN_ADMIN_TOOLS: list[str] = []
 #: tool is missing instead of seeing it vanish.
 EXCLUDED_TOOLS: list[str] = []
 
+#: `description` set on every shared link downloadAsset creates. The
+#: immich-mcp-link-cleanup job on my.jru.me deletes expired links carrying
+#: exactly this marker and nothing else; change it in both places or not at all.
+SHARED_LINK_MARKER = "mcp4immich-auto"
+
 
 def _with_confirm_note(description: str, risk: Risk) -> str:
     if risk in (Risk.DESTRUCTIVE, Risk.DESTRUCTIVE_ADMIN):
@@ -790,6 +795,7 @@ def download_asset(asset_id: str, output: str = "base64") -> dict[str, Any]:
                         "type": "INDIVIDUAL",
                         "assetIds": [asset_id],
                         "expiresAt": expires_at_iso,
+                        "description": SHARED_LINK_MARKER,
                     },
                 ),
                 (
@@ -798,6 +804,7 @@ def download_asset(asset_id: str, output: str = "base64") -> dict[str, Any]:
                         "type": "INDIVIDUAL",
                         "assetIds": [asset_id],
                         "expiresAt": expires_at_iso,
+                        "description": SHARED_LINK_MARKER,
                     },
                 ),
                 (
@@ -805,6 +812,7 @@ def download_asset(asset_id: str, output: str = "base64") -> dict[str, Any]:
                     {
                         "assetIds": [asset_id],
                         "expiresAt": expires_at_iso,
+                        "description": SHARED_LINK_MARKER,
                     },
                 ),
                 (
@@ -812,6 +820,7 @@ def download_asset(asset_id: str, output: str = "base64") -> dict[str, Any]:
                     {
                         "assetIds": [asset_id],
                         "expiresAt": expires_at_iso,
+                        "description": SHARED_LINK_MARKER,
                     },
                 ),
             ]
