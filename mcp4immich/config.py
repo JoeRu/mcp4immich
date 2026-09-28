@@ -137,3 +137,50 @@ def get_download_asset_delivery_mode() -> str:
             f"{', '.join(sorted(valid_modes))}"
         )
     return mode
+
+
+AUTH_ENV_VARS = (
+    "MCP_AUTH_ISSUER",
+    "MCP_AUTH_AUDIENCE",
+    "MCP_AUTH_RESOURCE_URL",
+    "MCP_AUTH_ALLOWED_SUB",
+    "MCP_AUTH_ALGORITHMS",
+)
+_AUTH_REQUIRED = ("MCP_AUTH_ISSUER", "MCP_AUTH_AUDIENCE", "MCP_AUTH_RESOURCE_URL")
+_DEFAULT_AUTH_ALGORITHMS = ("RS256", "ES256", "EdDSA")
+
+
+def get_auth_settings() -> dict[str, Any] | None:
+    """Inbound OAuth settings for the MCP endpoint, or None when auth is off.
+
+    Fails closed: once any MCP_AUTH_* variable is set, the required ones must
+    all be present, so a half-written config can never start an unauthenticated
+    server that the operator believes is protected.
+    """
+    values = {name: os.getenv(name, "").strip() for name in AUTH_ENV_VARS}
+    if not any(values.values()):
+        return None
+    missing = [name for name in _AUTH_REQUIRED if not values[name]]
+    if missing:
+        raise ValueError(
+            f"MCP auth is partially configured; missing: {', '.join(missing)}"
+        )
+    for name in ("MCP_AUTH_ISSUER", "MCP_AUTH_RESOURCE_URL"):
+        if not values[name].startswith("https://"):
+            raise ValueError(f"{name} must start with https://")
+    raw_algorithms = values["MCP_AUTH_ALGORITHMS"]
+    algorithms = (
+        tuple(a.strip() for a in raw_algorithms.split(",") if a.strip())
+        if raw_algorithms
+        else _DEFAULT_AUTH_ALGORITHMS
+    )
+    refused = [a for a in algorithms if a.lower() == "none" or a.upper().startswith("HS")]
+    if refused:
+        raise ValueError(f"MCP_AUTH_ALGORITHMS: {', '.join(refused)} not allowed")
+    return {
+        "issuer": values["MCP_AUTH_ISSUER"].rstrip("/"),
+        "audience": values["MCP_AUTH_AUDIENCE"],
+        "resource_url": values["MCP_AUTH_RESOURCE_URL"],
+        "allowed_sub": values["MCP_AUTH_ALLOWED_SUB"] or None,
+        "algorithms": algorithms,
+    }
