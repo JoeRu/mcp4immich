@@ -467,7 +467,7 @@ MCP server settings for Docker Compose:
 
 Pre-built Docker images are automatically published to GitHub Container Registry (GHCR) for every push to `main` and `develop` branches, as well as for releases.
 
-> Images published before 2026-09-20 live at `ghcr.io/joeru/claw2immich` and keep working; new tags are published under `mcp4immich`.
+> Images are published under `ghcr.io/joeru/mcp4immich`. The pre-rename image `ghcr.io/joeru/claw2immich` has been removed; switch any old references to `mcp4immich`.
 
 **Pull the image:**
 ```bash
