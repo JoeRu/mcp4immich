@@ -31,7 +31,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           # Hardcoded rather than `${{ github.repository_owner }}`: GHCR
           # image paths must be lowercase and the GitHub org is `JoeRu`, so
